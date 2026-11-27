@@ -90,29 +90,29 @@ namespace spartan
                 RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
                 RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
                 RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_reflections);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_reflections);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_refraction_source);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
                 RHI_CommandList::SetTexture("tex_water_sky_sh", GetRenderTarget(Renderer_RenderTarget::sky_sh));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_frame);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_frame);
 
                 // ray traced misses and hit shading sample the sky panorama
                 RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
                 m_pcb_pass_cpu.set(pass_reflections_apply::mip_count, static_cast<float>(tex_skysphere->GetMipCount()));
 
                 // glass traces its refraction with the same hit shading the reflections use
                 bool ray_traced_refraction = false;
-                if (RHI_Device::IsSupportedRayTracing())
+                if (RHI_Device::Caps().ray_tracing)
                 {
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
                     RHI_CommandList::SetBuffer("radiance_cache", GetBuffer(Renderer_Buffer::RadianceCache));
                     RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
                     if (tlas && tlas->GetRhiResource())
                     {
-                        RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                        Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                        Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
                         ray_traced_refraction = use_ray_traced && !m_pass_state.skip_rt_trace;
                     }
                 }
@@ -180,19 +180,19 @@ namespace spartan
                 GetShader(Renderer_Shader::reflections_ray_miss_r),
                 GetShader(Renderer_Shader::reflections_ray_hit_r)
             );
-            RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             
             RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             
             // reset and bind the per-hit geometry info ring as uav
             GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
 
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex,  tex_reflections_position);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_reflections_normal);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_reflections_albedo);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
+            Renderer::BindTexture(Renderer_BindingsUav::tex,  tex_reflections_position);
+            Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_reflections_normal);
+            Renderer::BindTexture(Renderer_BindingsUav::tex3, tex_reflections_albedo);
+            Renderer::BindTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
 
             // nrd fills in the untraced pixels, so checkerboard is only safe when the denoiser shaders are ready.
             // when reflections already run at half-res (e.g. 4K -> 1080p), trace full-rate to avoid double subsampling.
@@ -246,18 +246,18 @@ namespace spartan
             SetCommonTextures(eye_layer, false);
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::reflections_shade_c));
             
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_reflections_position);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_reflections_normal);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_reflections_albedo);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, tex_skysphere);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_reflections);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_reflections_position);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_reflections_normal);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_reflections_albedo);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex4, tex_skysphere);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_reflections);
             RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
             RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
             RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
             RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
             RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
             RHI_CommandList::SetBuffer("radiance_cache", GetBuffer(Renderer_Buffer::RadianceCache));
 
             // bind tlas for inline shadow, bounce and second reflection rays at the hit, the bounce
@@ -266,8 +266,8 @@ namespace spartan
             {
                 if (tlas->GetRhiResource())
                 {
-                    RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                    Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                    Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
                 }
             }
             
@@ -333,11 +333,11 @@ namespace spartan
             {
                 SetCommonTextures(eye_layer, false);
                 RHI_CommandList::SetShader(shader_pack, "nrd_pack_reflections");
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_reflections);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_mv);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_normal);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, tex_in);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_reflections);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_mv);
+                Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_normal);
+                Renderer::BindTexture(Renderer_BindingsUav::tex3, tex_view_z);
+                Renderer::BindTexture(Renderer_BindingsUav::tex4, tex_in);
                 m_pcb_pass_cpu.set(pass_nrd_reflections::checkerboard, checkerboard);
                 RHI_CommandList::Dispatch(tex_reflections, GetResolutionScale());
             }
@@ -357,8 +357,8 @@ namespace spartan
                 RHI_CommandList::BeginMarker("nrd_unpack");
                 {
                     RHI_CommandList::SetShader(shader_unpack, "nrd_unpack_reflections");
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, denoised ? tex_out : tex_in);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_reflections);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, denoised ? tex_out : tex_in);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, tex_reflections);
                     m_pcb_pass_cpu.set(pass_nrd_reflections::checkerboard, !denoised);
                     RHI_CommandList::Dispatch(tex_reflections, GetResolutionScale());
                 }
@@ -414,7 +414,7 @@ namespace spartan
         }
         m_pass_state.cleared_rt_shadows = false;
         
-        if (!RHI_Device::IsSupportedRayTracing())
+        if (!RHI_Device::Caps().ray_tracing)
         {
             return;
         }
@@ -446,13 +446,13 @@ namespace spartan
             {
                 SetCommonTextures();
                 RHI_CommandList::SetShaders(shader_rgen, shader_miss, shader_hit);
-                RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
                 // the raygen runs inline queries and alpha tests foliage through the hit records
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
+                Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_shadows);
                 if (tex_shadows_local)
                 {
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
+                    Renderer::BindTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
                 }
 
                 // Resolve the four SIGMA slots once per frame, rather than scanning
@@ -493,8 +493,8 @@ namespace spartan
                     RHI_CommandList::SetShader(GetShader(Renderer_Shader::ray_traced_shadows_fill_c), "ray_traced_shadows_fill");
                     SetCommonTextures();
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu); // the slot table the trace used
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, tex_shadows);
+                    Renderer::BindTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
                     RHI_CommandList::Dispatch(tex_shadows, GetResolutionScale());
                 }
                 RHI_CommandList::EndMarker();
@@ -514,7 +514,7 @@ namespace spartan
 
         if (
             !cvar_ray_traced_shadows.GetValueAs<bool>() ||
-            !RHI_Device::IsSupportedRayTracing() ||
+            !RHI_Device::Caps().ray_tracing ||
             IsSecondaryViewActive()
         )
         {
@@ -568,16 +568,16 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_nrd_shadows::is_local, is_local);
             m_pcb_pass_cpu.set(pass_nrd_shadows::light_index, light_index);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_shadows);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_shadows);
             if (tex_shadows_local)
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::rt_shadows_local, tex_shadows_local);
+                Renderer::BindTexture(Renderer_BindingsSrv::rt_shadows_local, tex_shadows_local);
             }
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_mv);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_normal);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, tex_in);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex5, tex_translucency);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_mv);
+            Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_normal);
+            Renderer::BindTexture(Renderer_BindingsUav::tex3, tex_view_z);
+            Renderer::BindTexture(Renderer_BindingsUav::tex4, tex_in);
+            Renderer::BindTexture(Renderer_BindingsUav::tex5, tex_translucency);
             RHI_CommandList::Dispatch(tex_shadows, GetResolutionScale());
             RHI_CommandList::EndPass();
 
@@ -592,11 +592,11 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_nrd_shadows::local_slice, slice);
             m_pcb_pass_cpu.set(pass_nrd_shadows::is_local, is_local);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, output);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, output);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_shadows);
             if (tex_shadows_local)
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
+                Renderer::BindTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
             }
             RHI_CommandList::Dispatch(tex_shadows, GetResolutionScale());
             RHI_CommandList::EndPass();
@@ -766,23 +766,23 @@ namespace spartan
                 GetShader(Renderer_Shader::restir_pt_ray_miss_r),
                 GetShader(Renderer_Shader::restir_pt_ray_hit_r)
             );
-            RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+            Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
 
             // reset and bind the per-hit geometry info ring as uav
             GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
 
             // emissive triangle nee pool, prefix sum and per-triangle data populated by
             // BuildEmissiveTriangleNeePool, count comes through buffer_frame.restir_pt_emissive_tri_count
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            Renderer::BindBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_gi);
             RHI_CommandList::SetTexture("restir_specular_output", GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
-                RHI_CommandList::SetTexture(restir_reservoir_uav[i], reservoirs[i]);
+                Renderer::BindTexture(restir_reservoir_uav[i], reservoirs[i]);
 
             RHI_CommandList::SetTexture("restir_primary_hit_output", GetRenderTarget(Renderer_RenderTarget::restir_primary_hit));
             RHI_CommandList::SetTexture("restir_primary_surface_output", GetRenderTarget(Renderer_RenderTarget::restir_primary_surface));
@@ -808,32 +808,32 @@ namespace spartan
             // the temporal pass re-traces the chosen reservoir's visibility ray to kill samples that no longer reach their reconnection vertex
             if (tlas)
             {
-                RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             }
 
             // the shared restir header declares the bindless geometry and emissive triangle
             // resources, bind them so the pass has a complete descriptor set
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            Renderer::BindBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
-                RHI_CommandList::SetTexture(restir_reservoir_srv[i], reservoirs_prev[i]);
-                RHI_CommandList::SetTexture(restir_reservoir_uav[i], reservoirs[i]);
+                Renderer::BindTexture(restir_reservoir_srv[i], reservoirs_prev[i]);
+                Renderer::BindTexture(restir_reservoir_uav[i], reservoirs[i]);
             }
 
             // the validity gate needs the prior surface depth at prev_uv, the current depth there ghosts moving objects
             if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, depth_prev);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, depth_prev);
             }
 
             // previous frame normals for the same gate
             if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal_previous, normal_prev);
+                Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_normal_previous, normal_prev);
             }
 
             RHI_CommandList::SetTexture("restir_primary_hit_previous", GetRenderTarget(Renderer_RenderTarget::restir_primary_hit_previous));
@@ -841,13 +841,13 @@ namespace spartan
 
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             }
 
             // duplication score of the previous frame's reservoirs, drives the adaptive m cap, lin 2026 5
             if (RHI_Texture* tex_duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_duplication);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_duplication);
             }
 
             const float history_m_cap = m_pass_state.restir.history_fade_frames > 0 ? restir_history_fade_m_cap : 0.0f;
@@ -860,7 +860,7 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_restir_temporal::pool_remap_count, m_pass_state.restir.pool_remap_count);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_gi);
             RHI_CommandList::SetTexture("restir_specular_output", GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
             RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
         }
@@ -891,28 +891,28 @@ namespace spartan
         SetCommonTextures();
         {
             RHI_CommandList::SetShader(shader_shift);
-            RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
 
             // see the matching comment in Pass_ReSTIR_Temporal
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            Renderer::BindBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::restir_pairing, GetBuffer(Renderer_Buffer::RestirPairing));
+            Renderer::BindBuffer(Renderer_BindingsUav::restir_pairing, GetBuffer(Renderer_Buffer::RestirPairing));
 
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             }
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
-                RHI_CommandList::SetTexture(restir_reservoir_srv[i], reservoirs[i]);
+                Renderer::BindTexture(restir_reservoir_srv[i], reservoirs[i]);
             }
 
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex,  shift[0]);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, shift[1]);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, shift[2]);
+            Renderer::BindTexture(Renderer_BindingsUav::tex,  shift[0]);
+            Renderer::BindTexture(Renderer_BindingsUav::tex2, shift[1]);
+            Renderer::BindTexture(Renderer_BindingsUav::tex3, shift[2]);
             RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
         }
         RHI_CommandList::EndPass();
@@ -923,26 +923,26 @@ namespace spartan
             RHI_CommandList::SetShader(shader_spatial);
 
             // Winning replay paths use the same transport resources as the prepass.
-            RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::restir_pairing, GetBuffer(Renderer_Buffer::RestirPairing));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            Renderer::BindBuffer(Renderer_BindingsUav::restir_pairing, GetBuffer(Renderer_Buffer::RestirPairing));
+            Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            Renderer::BindBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             // pre-pass shift results, one per pairing table
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, shift[0]);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, shift[1]);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, shift[2]);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, shift[0]);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, shift[1]);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex4, shift[2]);
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
-                RHI_CommandList::SetTexture(restir_reservoir_srv[i], reservoirs[i]);
-                RHI_CommandList::SetTexture(restir_reservoir_uav[i], reservoirs_spatial[i]);
+                Renderer::BindTexture(restir_reservoir_srv[i], reservoirs[i]);
+                Renderer::BindTexture(restir_reservoir_uav[i], reservoirs_spatial[i]);
             }
 
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_gi);
             RHI_CommandList::SetTexture("restir_specular_output", GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
             RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
         }
@@ -1035,7 +1035,7 @@ namespace spartan
             return;
         }
 
-        if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing() || !reservoir0)
+        if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::Caps().ray_tracing || !reservoir0)
         {
             if (!m_pass_state.restir.cleared_restir)
             {
@@ -1143,7 +1143,7 @@ namespace spartan
             return;
         RHI_CommandList::BeginPass("restir_pt_environment_rows");
         RHI_CommandList::SetShader(environment_rows);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
         RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
         RHI_CommandList::Dispatch(512, 1, 1);
         RHI_CommandList::EndPass();
@@ -1159,7 +1159,7 @@ namespace spartan
         RHI_CommandList::BeginPass("restir_pt_light_tiles");
         {
             RHI_CommandList::SetShader(shader_light_tiles);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            Renderer::BindBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
             RHI_CommandList::Dispatch((128 * 1024) / 64, 1, 1);
@@ -1196,9 +1196,9 @@ namespace spartan
                     RHI_CommandList::SetShader(shader_duplication);
                     RHI_Texture* reservoir_seed = ran_spatial ? reservoirs_spatial[3] : reservoirs[3];
                     RHI_Texture* reservoir_weight = ran_spatial ? reservoirs_spatial[2] : reservoirs[2];
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, reservoir_seed);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, reservoir_weight);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_duplication);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, reservoir_seed);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex2, reservoir_weight);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, tex_duplication);
                     RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
                 }
                 RHI_CommandList::EndPass();
@@ -1260,13 +1260,13 @@ namespace spartan
             {
                 SetCommonTextures();
                 RHI_CommandList::SetShader(shader_pack, "restir_pt_nrd_pack");
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
                 RHI_CommandList::SetTexture("restir_specular_input", GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_in));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_gi_raw);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_mv);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_normal);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, tex_in);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_gi_raw);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_mv);
+                Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_normal);
+                Renderer::BindTexture(Renderer_BindingsUav::tex3, tex_view_z);
+                Renderer::BindTexture(Renderer_BindingsUav::tex4, tex_in);
                 RHI_CommandList::Dispatch(tex_gi_raw);
             }
             RHI_CommandList::EndMarker();
@@ -1287,9 +1287,9 @@ namespace spartan
             RHI_CommandList::BeginMarker("nrd_unpack");
             {
                 RHI_CommandList::SetShader(shader_unpack, "restir_pt_nrd_unpack");
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_out));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_out);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_out));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_out);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
                 RHI_CommandList::Dispatch(tex_gi_denoised);
             }
             RHI_CommandList::EndMarker();
@@ -1303,13 +1303,13 @@ namespace spartan
             RHI_CommandList::BeginPass("restir_pt_repair");
             SetCommonTextures();
             RHI_CommandList::SetShader(shader_repair);
-            RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            Renderer::BindBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
             RHI_CommandList::Dispatch(tex_gi_denoised);
             RHI_CommandList::EndPass();
         }
@@ -1366,8 +1366,8 @@ namespace spartan
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::sss_c_bend));
 
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_sss, tex_sss);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+            Renderer::BindTexture(Renderer_BindingsUav::tex_sss, tex_sss);
             uint32_t array_slice_index = 0;
             for (Entity* entity : lights)
             {
@@ -1441,9 +1441,9 @@ namespace spartan
 
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::light_cluster_assign_c), "light_cluster_assign");
 
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_stats, GetBuffer(Renderer_Buffer::ClusterStats));
+            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+            Renderer::BindBuffer(Renderer_BindingsUav::cluster_stats, GetBuffer(Renderer_Buffer::ClusterStats));
 
             // one dispatch even in vr, the grid lives in left eye space which contains the right eye to well under a tile, so force eye 0
             const uint32_t saved_eye = m_pcb_pass_cpu.eye_index;
@@ -1474,12 +1474,12 @@ namespace spartan
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::light_cluster_visualize_c));
 
             // depth feeds the per pixel cluster id, debug_output is the heatmap target
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_debug);
+            Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_debug);
 
             // the visualize shader reads the grid populated by light_cluster_assign in compute batch a
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
 
             // the cap is a cvar so users can tune contrast per scene, defaults to 4 which matches typical street-lamp density
             m_pcb_pass_cpu.set(pass_light_cluster_visualize::mode, mode);
@@ -1513,7 +1513,7 @@ namespace spartan
         SetCommonTextures(eye_layer);
         {
             RHI_CommandList::SetShaders(shader_v, shader_p);
-            RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Additive));
+            RHI_CommandList::SetBlend(RHI_BlendMode::Additive);
             RHI_CommandList::SetColorTarget(tex_out);
             RHI_CommandList::SetResolutionScale(true);
 
@@ -1596,7 +1596,7 @@ namespace spartan
         const uint32_t groups_z = (renderer_fog_volume_depth + 3) / 4;
 
         RHI_AccelerationStructure* tlas = nullptr;
-        if (RHI_Device::IsSupportedRayTracing())
+        if (RHI_Device::Caps().ray_tracing)
         {
             tlas = GetTopLevelAccelerationStructure();
             if (tlas && !tlas->GetRhiResource())
@@ -1612,8 +1612,8 @@ namespace spartan
             RHI_CommandList::SetTexture("tex_fog_sky_visibility_uav", tex_sky_visibility);
             if (tlas)
             {
-                RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             }
             RHI_CommandList::Dispatch(
                 (renderer_fog_sky_width + 7) / 8,
@@ -1632,18 +1632,18 @@ namespace spartan
             RHI_CommandList::SetTexture("tex_fog_water_source_uav", water_write);
             RHI_CommandList::SetTexture("tex_fog_water_source", water_read);
             RHI_CommandList::SetTexture("tex_fog_extinction_uav", tex_extinction);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_write);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_read);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::volumetric_light_indices, GetBuffer(Renderer_Buffer::VolumetricLightIndices));
+            Renderer::BindTexture(Renderer_BindingsUav::tex3d, tex_write);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3d, tex_read);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+            Renderer::BindBuffer(Renderer_BindingsUav::volumetric_light_indices, GetBuffer(Renderer_Buffer::VolumetricLightIndices));
 
             // shadow rays alpha test foliage through the hit records
             if (tlas)
             {
-                RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             }
 
             if (RHI_Texture* tex_ocean_norm = GetRenderTarget(Renderer_RenderTarget::ocean_normal))
@@ -1713,8 +1713,8 @@ namespace spartan
         SetCommonTextures(eye_layer);
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::fog_composite_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter));
             m_pcb_pass_cpu.set(pass_fog::debug_mode, cvar_fog_debug.GetValue());
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_Texture* frame = GetRenderTarget(Renderer_RenderTarget::frame_render);
@@ -1723,7 +1723,7 @@ namespace spartan
             RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
             RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
             RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, frame);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, frame);
             RHI_CommandList::Dispatch(frame, Renderer::GetResolutionScale());
         }
         RHI_CommandList::EndPass();
@@ -1739,28 +1739,28 @@ namespace spartan
         SetCommonTextures(eye_layer);
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::light_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::rt_shadows_local, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_local));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, light_diffuse);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, light_specular);
+            Renderer::BindTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
+            Renderer::BindTexture(Renderer_BindingsSrv::rt_shadows_local, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_local));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, light_diffuse);
+            Renderer::BindTexture(Renderer_BindingsUav::tex2, light_specular);
 
             // clustered lighting grid, written by light_cluster_assign in compute batch a
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
 
             // tlas and hit records for the inline local light rays, they alpha test foliage
-            if (RHI_Device::IsSupportedRayTracing())
+            if (RHI_Device::Caps().ray_tracing)
             {
                 if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
                 {
                     if (tlas->GetRhiResource())
                     {
-                        RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                        Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                        Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
                     }
                 }
             }
@@ -1794,8 +1794,8 @@ namespace spartan
         {
             RHI_CommandList::SetShader(shader_c);
             m_pcb_pass_cpu.is_transparent = 0;
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_light_diffuse);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_light_diffuse);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
             m_pass_state.subsurface_scattered = RHI_CommandList::IsPipelineReady();
         }
@@ -1818,31 +1818,31 @@ namespace spartan
         {
             RHI_CommandList::SetShader(shader_c);
             m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
             if (IsRestirActive())
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, scattered ?
+                Renderer::BindTexture(Renderer_BindingsSrv::tex6, scattered ?
                     GetRenderTarget(Renderer_RenderTarget::light_diffuse_scattered) : GetStandardTexture(Renderer_StandardTexture::Black));
                 RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
                 RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
                 RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
                 RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
                 RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::sky_sh));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::sky_sh));
             }
             else
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
             }
             if (is_transparent_pass)
             {
                 RHI_Texture* tex_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
                 if (tex_opaque)
                 {
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_opaque);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_opaque);
                 }
             }
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
@@ -1860,13 +1860,13 @@ namespace spartan
         {
             RHI_CommandList::SetShader(shader);
             m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
             // l2 sh projected from the skysphere, used for directional diffuse ibl
             RHI_Texture* tex_sky_sh = GetRenderTarget(Renderer_RenderTarget::sky_sh);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_sky_sh ? tex_sky_sh : GetStandardTexture(Renderer_StandardTexture::Black));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex5, tex_sky_sh ? tex_sky_sh : GetStandardTexture(Renderer_StandardTexture::Black));
 
             m_pcb_pass_cpu.set(pass_light_image_based::environment_mip_count, static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());

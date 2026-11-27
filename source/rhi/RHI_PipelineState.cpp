@@ -10,9 +10,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_PipelineState.h"
 #include "RHI_Shader.h"
 #include "RHI_SwapChain.h"
-#include "RHI_BlendState.h"
-#include "RHI_RasterizerState.h"
-#include "RHI_DepthStencilState.h"
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
 #include "RHI_Pipeline.h"
@@ -52,9 +49,8 @@ namespace spartan
         
             if (is_graphics)
             {
-                bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture;
-                bool has_backbuffer      = pso.render_target_swapchain;
-                SP_ASSERT_MSG(pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state, "Graphics states are missing");
+                bool has_render_target = pso.render_target_color_textures[0] || pso.render_target_depth_texture;
+                bool has_backbuffer    = pso.render_target_swapchain;
                 SP_ASSERT_MSG(has_render_target || has_backbuffer, "A render target is missing");
                 SP_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
             }
@@ -77,20 +73,9 @@ namespace spartan
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_swapchain->GetFormat()));
             }
 
-            if (pso.rasterizer_state)
-            {
-                hash = rhi_hash_combine(hash, pso.rasterizer_state->GetHash());
-            }
-
-            if (pso.blend_state)
-            {
-                hash = rhi_hash_combine(hash, pso.blend_state->GetHash());
-            }
-
-            if (pso.depth_stencil_state)
-            {
-                hash = rhi_hash_combine(hash, pso.depth_stencil_state->GetHash());
-            }
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.rasterizer_mode));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.blend_mode));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.depth_mode));
 
             // shaders
             for (RHI_Shader* shader : pso.shaders)
@@ -190,23 +175,9 @@ namespace spartan
                 return;
             }
 
-            if (!pso.rasterizer_state)
+            if (pso.depth_mode == RHI_DepthMode::Auto)
             {
-                static RHI_RasterizerState rasterizer(RHI_PolygonMode::Solid, true, 0.0f, 0.0f, 0.0f, 3.0f);
-                pso.rasterizer_state = &rasterizer;
-            }
-
-            if (!pso.blend_state)
-            {
-                static RHI_BlendState blend(false);
-                pso.blend_state = &blend;
-            }
-
-            if (!pso.depth_stencil_state)
-            {
-                static RHI_DepthStencilState depth_off(false, false, RHI_Comparison_Function::Never);
-                static RHI_DepthStencilState depth_read_write(true, true, RHI_Comparison_Function::GreaterEqual);
-                pso.depth_stencil_state = pso.render_target_depth_texture ? &depth_read_write : &depth_off;
+                pso.depth_mode = pso.render_target_depth_texture ? RHI_DepthMode::ReadWrite : RHI_DepthMode::Off;
             }
         }
     }
@@ -217,9 +188,6 @@ namespace spartan
         {
             string name;
             array<shared_ptr<RHI_Shader>, static_cast<size_t>(RHI_Shader_Type::Max)> shaders;
-            RHI_RasterizerState rasterizer;
-            RHI_BlendState blend;
-            RHI_DepthStencilState depth;
         };
         auto inputs = make_shared<Inputs>();
         m_compilation_inputs = inputs;
@@ -233,21 +201,6 @@ namespace spartan
                 inputs->shaders[i] = m_state.shaders[i]->CreateSnapshot();
                 m_state.shaders[i] = inputs->shaders[i].get();
             }
-        }
-        if (m_state.rasterizer_state)
-        {
-            inputs->rasterizer = *m_state.rasterizer_state;
-            m_state.rasterizer_state = &inputs->rasterizer;
-        }
-        if (m_state.blend_state)
-        {
-            inputs->blend = *m_state.blend_state;
-            m_state.blend_state = &inputs->blend;
-        }
-        if (m_state.depth_stencil_state)
-        {
-            inputs->depth = *m_state.depth_stencil_state;
-            m_state.depth_stencil_state = &inputs->depth;
         }
         m_compile_task = RHI_Compiler::Pipelines().Submit([this, descriptor_set_layout]()
         {
@@ -302,6 +255,7 @@ namespace spartan
         RHI_Texture* t7
     )
     {
+        render_target_swapchain      = nullptr;
         render_target_color_textures = { t0, t1, t2, t3, t4, t5, t6, t7 };
     }
 

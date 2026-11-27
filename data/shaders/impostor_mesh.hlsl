@@ -13,11 +13,18 @@ Commercial use requires written permission and negotiated payment terms.
 // into every 64-thread workgroup with zero barriers, zero groupshared state, and zero vertex/meshlet fetches.
 // DEPTH_ONLY and G-Buffer paths run identical clip-space math for bit-exact ReadEqual depth tests.
 
+#ifdef VISIBILITY_PASS
+#define DEPTH_ONLY
+#endif
+
 StructuredBuffer<SurvivingInstance> impostor_instances : register(t98);
 
 struct MeshPrimitive
 {
     bool cull_primitive : SV_CullPrimitive;
+#ifdef VISIBILITY_PASS
+    uint vis_id         : SV_PrimitiveID;
+#endif
 };
 
 [outputtopology("triangle")]
@@ -59,11 +66,6 @@ void main_ms(
         SurvivingInstance si = impostor_instances[list_base + first_quad + quad_id];
         DrawData draw        = indirect_draw_data[si.draw_index];
 
-        float2 input_uv = float2(
-            (corner == 1u || corner == 2u) ? 1.0f : 0.0f,
-            (corner >= 2u)                 ? 1.0f : 0.0f
-        );
-
         bool is_per_instance = (draw.flags & 2u) != 0u;
         float4x4 instance    = is_per_instance
             ? pull_instance_transform(draw.instance_offset, si.instance_index)
@@ -82,6 +84,12 @@ void main_ms(
         float3 right;
         float3 up;
         impostor_frame_basis(direction, right, up);
+
+        float4 uv_rect  = impostor_frame_bounds(draw, frame, frames);
+        float2 input_uv = float2(
+            (corner == 1u || corner == 2u) ? uv_rect.z : uv_rect.x,
+            (corner >= 2u)                 ? uv_rect.w : uv_rect.y
+        );
 
         float2 offset     = (input_uv * 2.0f - 1.0f) * draw.impostor_radius;
         float3 card_local = draw.impostor_center + right * offset.x + up * offset.y;
@@ -136,6 +144,9 @@ void main_ms(
         const uint b    = q * 4u;
         MeshPrimitive prim;
         prim.cull_primitive = false;
+#ifdef VISIBILITY_PASS
+        prim.vis_id         = VIS_FLAG_IMPOSTOR | ((list_base + first_quad + q) & VIS_IMPOSTOR_MASK);
+#endif
         out_primitives[tid] = prim;
         out_indices[tid]    = half == 0u ? uint3(b + 0u, b + 2u, b + 1u) : uint3(b + 0u, b + 3u, b + 2u);
     }

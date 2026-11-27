@@ -645,6 +645,55 @@ namespace spartan::geometry_processing
         up    = math::Vector3::Cross(direction, right);
     }
 
+    // packs the conservative [0, 255] input_uv bounding box of valid texels for one octahedral frame
+    // into u0 | (v0 << 8) | (u1 << 16) | (v1 << 24), inverting uv_frame = 0.002 + input_uv * 0.996
+    uint32_t pack_impostor_frame_bounds(const uint32_t* frame_words, uint32_t resolution, uint32_t layers)
+    {
+        uint32_t min_x = resolution;
+        uint32_t min_y = resolution;
+        uint32_t max_x = 0;
+        uint32_t max_y = 0;
+        const size_t texel_stride = static_cast<size_t>(layers) * 2;
+
+        for (uint32_t py = 0; py < resolution; py++)
+        {
+            const size_t row_base = static_cast<size_t>(py) * resolution * texel_stride;
+            for (uint32_t px = 0; px < resolution; px++)
+            {
+                if ((frame_words[row_base + static_cast<size_t>(px) * texel_stride + 1] & (1u << 31)) != 0u)
+                {
+                    min_x = std::min(min_x, px);
+                    min_y = std::min(min_y, py);
+                    max_x = std::max(max_x, px);
+                    max_y = std::max(max_y, py);
+                }
+            }
+        }
+
+        if (min_x > max_x)
+        {
+            return 0u;
+        }
+
+        const float inv_res = 1.0f / static_cast<float>(resolution);
+        const auto quantize_lo = [](float f) -> uint32_t
+        {
+            const float u = std::clamp((f - 0.002f) / 0.996f, 0.0f, 1.0f);
+            return static_cast<uint32_t>(floorf(u * 255.0f));
+        };
+        const auto quantize_hi = [](float f) -> uint32_t
+        {
+            const float u = std::clamp((f - 0.002f) / 0.996f, 0.0f, 1.0f);
+            return static_cast<uint32_t>(ceilf(u * 255.0f));
+        };
+
+        const uint32_t u0 = quantize_lo(static_cast<float>(min_x) * inv_res);
+        const uint32_t v0 = quantize_lo(static_cast<float>(min_y) * inv_res);
+        const uint32_t u1 = quantize_hi(static_cast<float>(max_x + 1) * inv_res);
+        const uint32_t v1 = quantize_hi(static_cast<float>(max_y + 1) * inv_res);
+        return u0 | (v0 << 8) | (u1 << 16) | (v1 << 24);
+    }
+
     void bake_impostor(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         const std::vector<uint32_t>& indices,
@@ -660,7 +709,8 @@ namespace spartan::geometry_processing
     {
         const size_t frame_texels = static_cast<size_t>(resolution) * resolution;
         const size_t frame_words  = frame_texels * layers * 2;
-        texels_out.assign(frame_words * frames * frames, 0u);
+        const size_t atlas_words  = frame_words * frames * frames;
+        texels_out.assign(atlas_words + static_cast<size_t>(frames) * frames, 0u);
         if (vertices.empty() || indices.size() < 3 || radius <= 0.0f)
         {
             return;
@@ -822,6 +872,8 @@ namespace spartan::geometry_processing
                         );
                     }
                 }
+
+                texels_out[atlas_words + static_cast<size_t>(fy) * frames + fx] = pack_impostor_frame_bounds(frame, resolution, layers);
             }
         }
     }
@@ -842,7 +894,8 @@ namespace spartan::geometry_processing
     {
         const size_t frame_texels = static_cast<size_t>(resolution) * resolution;
         const size_t frame_words  = frame_texels * 2;
-        texels_out.assign(frame_words * frames * frames, 0u);
+        const size_t atlas_words  = frame_words * frames * frames;
+        texels_out.assign(atlas_words + static_cast<size_t>(frames) * frames, 0u);
         if (canopy_vertices.empty() || canopy_indices.size() < 3 || radius <= 0.0f)
         {
             return;
@@ -1329,6 +1382,8 @@ namespace spartan::geometry_processing
                         frame[texel * 2 + 1] = ox | (oy << 8) | (dz14 << 16) | (is_bark ? (1u << 30) : 0u) | (1u << 31);
                     }
                 }
+
+                texels_out[atlas_words + f] = pack_impostor_frame_bounds(frame, resolution, 1);
             }
         };
 

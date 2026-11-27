@@ -11,7 +11,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Queue.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
-#include "../RHI_DescriptorSet.h"
 #include "../RHI_Compiler.h"
 #include "../../profiling/Profiler.h"
 #include "Metal_Internal.h"
@@ -209,25 +208,25 @@ namespace spartan
         }
 
         // limits
-        m_max_texture_2d_dimension                 = 16384;
-        m_max_push_constant_size                   = 256;
-        m_min_uniform_buffer_offset_alignment      = 256;
-        m_min_storage_buffer_offset_alignment      = 16;
-        m_min_acceleration_buffer_offset_alignment = 256;
-        m_optimal_buffer_copy_offset_alignment     = 256;
-        m_shader_group_handle_size                 = 32;
-        m_shader_group_handle_alignment            = 32;
-        m_shader_group_base_alignment              = 64;
-        m_timestamp_period                         = static_cast<float>(1e9 / static_cast<double>(RHI_Context::device->queryTimestampFrequency()));
+        m_caps.max_texture_2d_dimension                 = 16384;
+        m_caps.max_push_constant_size                   = 256;
+        m_caps.min_uniform_buffer_offset_alignment      = 256;
+        m_caps.min_storage_buffer_offset_alignment      = 16;
+        m_caps.min_acceleration_buffer_offset_alignment = 256;
+        m_caps.optimal_buffer_copy_offset_alignment     = 256;
+        m_caps.shader_group_handle_size                 = 32;
+        m_caps.shader_group_handle_alignment            = 32;
+        m_caps.shader_group_base_alignment              = 64;
+        m_caps.timestamp_period                         = static_cast<float>(1e9 / static_cast<double>(RHI_Context::device->queryTimestampFrequency()));
 
         // features come online as the backend implements them
-        m_is_ray_tracing_supported          = RHI_Context::device->supportsRaytracing();
-        m_is_mesh_shaders_supported         = true; // every metal 4 gpu has mesh shaders
-        m_is_shading_rate_supported         = false;
-        m_is_shader_base_instance_supported = false;
-        m_xess_supported                    = false;
-        m_dlss_supported                    = false;
-        m_metalfx_supported                 = MTLFX::TemporalScalerDescriptor::supportsMetal4FX(RHI_Context::device);
+        m_caps.ray_tracing          = RHI_Context::device->supportsRaytracing();
+        m_caps.mesh_shaders         = true; // every metal 4 gpu has mesh shaders
+        m_caps.vrs                  = false;
+        m_caps.shader_base_instance = false;
+        m_caps.xess                 = false;
+        m_caps.dlss                 = false;
+        m_caps.metalfx              = MTLFX::TemporalScalerDescriptor::supportsMetal4FX(RHI_Context::device);
 
         MTL4::CommandQueueDescriptor* descriptor = MTL4::CommandQueueDescriptor::alloc()->init();
         metal_utility::set_label(descriptor, "queue");
@@ -503,17 +502,16 @@ namespace spartan
         staging::pool.clear();
     }
 
-    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
+    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline)
     {
         SP_ASSERT(pso.GetHash() != 0);
         lock_guard<mutex> lock(pipelines::mutex_cache);
 
-        descriptor_set_layout = nullptr;
         uint64_t hash         = pso.GetHash();
         auto it               = pipelines::cache.find(hash);
         if (it == pipelines::cache.end())
         {
-            it = pipelines::cache.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
+            it = pipelines::cache.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso))).first;
         }
 
         pipeline = it->second->IsReady() && it->second->GetRhiResource() ? it->second.get() : nullptr;
@@ -592,48 +590,6 @@ namespace spartan
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
     {
         return 0;
-    }
-
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
-    {
-        // metal binds through argument tables, there are no descriptor sets
-    }
-
-    unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
-    {
-        static unordered_map<uint64_t, RHI_DescriptorSet> descriptors;
-        return descriptors;
-    }
-
-    mutex& RHI_Device::GetDescriptorSetMutex()
-    {
-        static mutex descriptor_mutex;
-        return descriptor_mutex;
-    }
-
-    uint64_t RHI_Device::GetDescriptorSetFrame()
-    {
-        return 0;
-    }
-
-    void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
-    {
-        if (!resource)
-            return;
-
-        lock_guard<mutex> lock(GetDescriptorSetMutex());
-        unordered_map<uint64_t, RHI_DescriptorSet>& sets = GetDescriptorSets();
-        for (auto it = sets.begin(); it != sets.end();)
-        {
-            if (it->second.IsReferingToResource(resource))
-            {
-                it = sets.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
     }
 
     uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)

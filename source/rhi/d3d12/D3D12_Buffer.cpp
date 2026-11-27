@@ -34,8 +34,6 @@ namespace spartan
         if (m_rhi_resource)
         {
             // evict cached descriptor sets keyed by this buffer pointer
-            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
-
             // defer release, open command lists may still reference this resource
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
@@ -64,9 +62,9 @@ namespace spartan
         {
             SP_ASSERT(m_element_count >= 3);
 
-            uint32_t handle_size  = RHI_Device::PropertyGetShaderGroupHandleSize();
-            uint32_t handle_align = RHI_Device::PropertyGetShaderGroupHandleAlignment();
-            uint64_t base_align   = RHI_Device::PropertyGetShaderGroupBaseAlignment();
+            uint32_t handle_size  = RHI_Device::Caps().shader_group_handle_size;
+            uint32_t handle_align = RHI_Device::Caps().shader_group_handle_alignment;
+            uint64_t base_align   = RHI_Device::Caps().shader_group_base_alignment;
 
             m_aligned_handle_size = static_cast<uint32_t>(((handle_size + handle_align - 1) / handle_align) * handle_align);
 
@@ -180,7 +178,7 @@ namespace spartan
         // sbt offsets must respect the base alignment, compute them from the actual gpu virtual address
         if (m_type == RHI_Buffer_Type::ShaderBindingTable)
         {
-            uint64_t base_align       = RHI_Device::PropertyGetShaderGroupBaseAlignment();
+            uint64_t base_align       = RHI_Device::Caps().shader_group_base_alignment;
             uint64_t current_address  = m_device_address;
             m_raygen_offset           = (base_align - (current_address % base_align)) % base_align;
             current_address          += m_raygen_offset + m_aligned_handle_size;
@@ -377,7 +375,7 @@ namespace spartan
         uint8_t* dst = static_cast<uint8_t*>(m_data_gpu);
         memset(dst, 0, m_object_size);
 
-        const uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+        const uint32_t handle_size = RHI_Device::Caps().shader_group_handle_size;
 
         void* raygen_id = properties->GetShaderIdentifier(L"RayGen");
         void* miss_id   = properties->GetShaderIdentifier(L"Miss");

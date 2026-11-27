@@ -8,7 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ============================
 #include "pch.h"
 #include "../RHI_Device.h"
-#include "../RHI_DescriptorSet.h"
+#include "RHI_DescriptorSet.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_AccelerationStructure.h"

@@ -54,7 +54,7 @@ namespace spartan
 
              if (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index)
              {
-                if (RHI_Device::IsSupportedRayTracing())
+                if (RHI_Device::Caps().ray_tracing)
                 {
                     flags_usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
                                 |  VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
@@ -94,7 +94,7 @@ namespace spartan
             }
             
             // save device address for ray tracing vertex/index buffer access
-            if (m_rhi_resource && RHI_Device::IsSupportedRayTracing() && (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index))
+            if (m_rhi_resource && RHI_Device::Caps().ray_tracing && (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index))
             {
                 m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
             }
@@ -127,7 +127,7 @@ namespace spartan
         else if (m_type == RHI_Buffer_Type::Constant)
         {
             // calculate required alignment based on minimum device offset alignment
-            size_t min_alignment = RHI_Device::PropertyGetMinUniformBufferOffsetAlignment();
+            size_t min_alignment = RHI_Device::Caps().min_uniform_buffer_offset_alignment;
             if (min_alignment > 0 && min_alignment != m_stride)
             {
                 m_stride      = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
@@ -142,9 +142,9 @@ namespace spartan
         {
             SP_ASSERT(m_element_count >= 3); // at minimum: raygen, miss, hit
         
-            uint32_t handle_size   = RHI_Device::PropertyGetShaderGroupHandleSize();
-            m_aligned_handle_size  = static_cast<uint32_t>(((handle_size + RHI_Device::PropertyGetShaderGroupHandleAlignment() - 1) / RHI_Device::PropertyGetShaderGroupHandleAlignment()) * RHI_Device::PropertyGetShaderGroupHandleAlignment());
-            uint64_t base_align    = RHI_Device::PropertyGetShaderGroupBaseAlignment();
+            uint32_t handle_size   = RHI_Device::Caps().shader_group_handle_size;
+            m_aligned_handle_size  = static_cast<uint32_t>(((handle_size + RHI_Device::Caps().shader_group_handle_alignment - 1) / RHI_Device::Caps().shader_group_handle_alignment) * RHI_Device::Caps().shader_group_handle_alignment);
+            uint64_t base_align    = RHI_Device::Caps().shader_group_base_alignment;
         
             // compute worst-case size for all shader groups
             uint64_t max_padding = base_align - 1;
@@ -310,7 +310,7 @@ namespace spartan
             SP_ASSERT(pfn_vk_get_ray_tracing_shader_group_handles_khr != nullptr);
         }
     
-        uint32_t handle_size      = RHI_Device::PropertyGetShaderGroupHandleSize();
+        uint32_t handle_size      = RHI_Device::Caps().shader_group_handle_size;
         uint32_t handles_size     = m_element_count * handle_size;
         constexpr uint32_t max_handles_size = 512; // handles are typically ~32 bytes each, 512 covers 16 groups
         SP_ASSERT(handles_size <= max_handles_size);

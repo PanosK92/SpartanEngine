@@ -467,6 +467,15 @@ namespace pass_cull_phase
     static const SHARED_UINT mode = 0; // uint, CULL_PHASE_MODE_*
 }
 
+// visibility_classify.hlsl / visibility_resolve.hlsl, tile classification and compute material resolve
+namespace pass_visibility
+{
+    static const SHARED_UINT tile_stride     = 0; // uint, max tiles per category in visibility_tiles
+    static const SHARED_UINT clear_gbuffer   = 1; // bool, zero g-buffer targets on sky/empty pixels during classify
+    static const SHARED_UINT scatter_cleared = 2; // bool, gpu scatter already drew into gbuffer_color (a > 0 masks visibility)
+    static const SHARED_UINT category        = 3; // uint, 0 = opaque, 1 = alpha, 2 = impostor
+}
+
 // shadow_cull.hlsl, the count and write passes run the same kernel so both see identical visibility
 namespace pass_shadow_cull
 {
@@ -1165,6 +1174,22 @@ struct SurvivingInstance
 #define IMPOSTOR_BATCH_SIZE             16u
 #define IMPOSTOR_ARGS_SLOT              8u
 #define IMPOSTOR_GRID_ARGS_SLOT         10u
+
+// 32-bit visibility buffer encoding:
+//   0                                                      = sky / non-visibility pixel
+//   VIS_FLAG_MESHLET  | (mi_idx << 7) | tri_id             = meshlet triangle (mi_idx < 2^23, tri_id < 124)
+//   VIS_FLAG_IMPOSTOR | impostor_idx                       = batched tree impostor quad
+#define VIS_FLAG_MESHLET                0x40000000u
+#define VIS_FLAG_IMPOSTOR               0x80000000u
+#define VIS_TRI_BITS                    7u
+#define VIS_TRI_MASK                    ((1u << VIS_TRI_BITS) - 1u)
+#define VIS_MESHLET_MASK                0x007FFFFFu
+#define VIS_IMPOSTOR_MASK               0x7FFFFFFFu
+#define VIS_TILE_SIZE                   8u
+#define VIS_CATEGORY_OPAQUE             0u
+#define VIS_CATEGORY_ALPHA              1u
+#define VIS_CATEGORY_IMPOSTOR           2u
+#define VIS_CATEGORY_COUNT              3u
 #define TRIANGLE_DISPATCH_ARGS_COUNT    12u
 
 // gpu-driven shadow maps, one record per shadow casting draw, culled per (atlas slice, instance) by shadow_cull.hlsl

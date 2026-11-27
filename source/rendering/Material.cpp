@@ -1240,7 +1240,7 @@ namespace spartan
 
         // fallback to generated_cache packed_textures when a material has foreign O/R/M/H images without a saved .tex_packed.texture
         array<uint64_t, slots_per_texture> pending_packed_keys = {};
-        if (!World::GetResourceDirectory().empty() && RHI_Device::IsSupportedBcCompression())
+        if (!World::GetResourceDirectory().empty() && RHI_Device::Caps().bc_compression)
         {
             for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
@@ -1658,7 +1658,7 @@ namespace spartan
         }
         if (!any_present) return;
 
-        bool can_cache = !World::GetResourceDirectory().empty() && RHI_Device::IsSupportedBcCompression();
+        bool can_cache = !World::GetResourceDirectory().empty() && RHI_Device::Caps().bc_compression;
         generated_cache::Hash key;
         if (can_cache)
         {
@@ -2116,7 +2116,7 @@ namespace spartan
 
     bool Material::IsTessellated() const
     {
-        return GetProperty(MaterialProperty::Tessellation) > 0.0f && RHI_Device::IsSupportedTessellation();
+        return GetProperty(MaterialProperty::Tessellation) > 0.0f && RHI_Device::Caps().tessellation;
     }
 
     bool Material::IsAlphaTested()

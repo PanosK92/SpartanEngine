@@ -107,7 +107,7 @@ namespace spartan
 
         void on_vrs_change(const CVarVariant& value)
         {
-            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedVrs())
+            if (get<float>(value) == 1.0f && !RHI_Device::Caps().vrs)
             {
                 SP_LOG_WARNING("This GPU doesn't support variable rate shading");
                 *ConsoleRegistry::Get().Find("r.variable_rate_shading")->m_value_ptr = 0.0f;
@@ -128,7 +128,7 @@ namespace spartan
 
         void on_ray_traced_reflections_change(const CVarVariant& value)
         {
-            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedRayTracing())
+            if (get<float>(value) == 1.0f && !RHI_Device::Caps().ray_tracing)
             {
                 SP_LOG_WARNING("This GPU doesn't support ray tracing");
                 *ConsoleRegistry::Get().Find("r.ray_traced_reflections")->m_value_ptr = 0.0f;
@@ -137,7 +137,7 @@ namespace spartan
 
         void on_ray_traced_shadows_change(const CVarVariant& value)
         {
-            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedRayTracing())
+            if (get<float>(value) == 1.0f && !RHI_Device::Caps().ray_tracing)
             {
                 SP_LOG_WARNING("This GPU doesn't support ray tracing");
                 *ConsoleRegistry::Get().Find("r.ray_traced_shadows")->m_value_ptr = 0.0f;
@@ -146,7 +146,7 @@ namespace spartan
 
         void on_mesh_shaders_change(const CVarVariant& value)
         {
-            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedMeshShaders())
+            if (get<float>(value) == 1.0f && !RHI_Device::Caps().mesh_shaders)
             {
                 SP_LOG_WARNING("This GPU doesn't support mesh shaders");
                 *ConsoleRegistry::Get().Find("r.mesh_shaders")->m_value_ptr = 0.0f;
@@ -158,9 +158,9 @@ namespace spartan
             float v = get<float>(value);
 
             // a vendor upscaler the device lacks (every one of them on webgpu) falls back to the engine's own taau
-            const bool xess_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess();
-            const bool dlss_missing    = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) && !RHI_Device::IsSupportedDlss();
-            const bool metalfx_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx) && !RHI_Device::IsSupportedMetalFx();
+            const bool xess_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::Caps().xess;
+            const bool dlss_missing    = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) && !RHI_Device::Caps().dlss;
+            const bool metalfx_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx) && !RHI_Device::Caps().metalfx;
             if (xess_missing || dlss_missing || metalfx_missing)
             {
                 const char* name = "MetalFX";
@@ -233,8 +233,8 @@ namespace spartan
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,   "screen space ambient occlusion, unavailable while path tracing is enabled");
     TConsoleVar<float> cvar_ssao_half_res                  ("r.ssao_half_res",                  -1.0f,  "half-resolution ssao (-1 = auto above 1440p, 0 = full-res, 1 = half-res)");
     TConsoleVar<float> cvar_subsurface_scattering          ("r.subsurface_scattering",          1.0f,   "screen space subsurface scattering for materials with a subsurface radius (skin, wax, marble), 0 falls back to wrapped diffuse");
-    TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections", on_ray_traced_reflections_change);
-    TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights", on_ray_traced_shadows_change);
+    TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::Caps().ray_tracing), "ray traced reflections", on_ray_traced_reflections_change);
+    TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::Caps().ray_tracing), "ray traced shadows for all lights", on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_rt_half_res                    ("r.rt_half_res",                    -1.0f,  "half-resolution rt reflections, rt shadows and nrd denoising (-1 = auto above 1440p, 0 = full-res, 1 = half-res)");
     TConsoleVar<float> cvar_path_tracing                   ("r.path_tracing",                   0.0f,   "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)", on_path_tracing_change);
     TConsoleVar<float> cvar_path_tracing_denoise           ("r.path_tracing_denoise",           0.0f,   "display a spatial NRD preview of completed reference samples");
@@ -263,7 +263,8 @@ namespace spartan
     TConsoleVar<float> cvar_frame_generation               ("r.frame_generation",               0.0f,   "amd fsr 3.1 frame generation, presents a generated frame between every two rendered ones, works on any vendor", on_frame_generation_change);
     // resolution                                                                                       
     TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,   "variable rate shading", on_vrs_change);
-    TConsoleVar<float> cvar_mesh_shaders                   ("r.mesh_shaders",                   1.0f,   "mesh shaders for opaque/alpha depth+gbuffer, on by default and falls back to vertex pull when the device or the shaders are unavailable", on_mesh_shaders_change);
+    TConsoleVar<float> cvar_mesh_shaders                   ("r.mesh_shaders",                   1.0f,   "mesh shaders for opaque/alpha visibility+gbuffer, on by default and falls back to vertex pull when the device or the shaders are unavailable", on_mesh_shaders_change);
+    TConsoleVar<bool>  cvar_visibility_buffer              ("r.visibility_buffer",              true,   "single visibility pass + tile-classified compute material resolve for opaque, alpha and impostor geometry; disable for legacy depth prepass + g-buffer raster");
     TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,   "render resolution scale (0.25-1.0)", on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,   "automatic resolution scaling");
     TConsoleVar<float> cvar_resolution_output_match_viewport("r.resolution_output_match_viewport", 1.0f, "match output resolution to the viewport size", on_resolution_output_match_viewport_change);

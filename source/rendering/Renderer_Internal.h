@@ -48,6 +48,28 @@ namespace spartan
 
     namespace Renderer
     {
+        // typed renderer-slot binding helpers (keeps RHI_CommandList free of Renderer_Bindings* enums)
+        inline void BindTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips)
+        {
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, false, array_layer);
+        }
+        inline void BindTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips)
+        {
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true, array_layer);
+        }
+        inline void BindBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer)
+        {
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(slot), buffer);
+        }
+        inline void BindConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer)
+        {
+            RHI_CommandList::SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer);
+        }
+        inline void BindAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+        {
+            RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
+        }
+
         // materials whose property values alone moved in the scan HaveMaterialsChangedThisFrame last ran, they keep
         // their slot and their textures, so the upload rewrites their entries instead of repacking every material
         // empty when that scan also saw a material arrive, leave, or swap a texture
@@ -62,9 +84,9 @@ namespace spartan
             Renderer_Shader shader_pixel,
             std::initializer_list<RHI_Texture*> color_targets,
             RHI_Texture* depth = nullptr,
-            RHI_BlendState* blend = nullptr,
-            RHI_DepthStencilState* depth_stencil = nullptr,
-            RHI_RasterizerState* rasterizer = nullptr,
+            RHI_BlendMode blend = RHI_BlendMode::Off,
+            RHI_DepthMode depth_mode = RHI_DepthMode::Auto,
+            RHI_RasterizerMode rasterizer = RHI_RasterizerMode::Solid,
             F setup = nullptr
         );
 
@@ -585,9 +607,9 @@ namespace spartan
         Renderer_Shader shader_pixel,
         std::initializer_list<RHI_Texture*> color_targets,
         RHI_Texture* depth,
-        RHI_BlendState* blend,
-        RHI_DepthStencilState* depth_stencil,
-        RHI_RasterizerState* rasterizer,
+        RHI_BlendMode blend,
+        RHI_DepthMode depth_mode,
+        RHI_RasterizerMode rasterizer,
         F setup
     )
     {
@@ -596,9 +618,9 @@ namespace spartan
             RHI_Shader* shader_a = GetShader(shader_vs_or_mesh);
             RHI_Shader* shader_p = GetShader(shader_pixel);
             RHI_CommandList::SetShaders(shader_a, shader_p);
-            RHI_CommandList::SetBlendState(blend);
-            RHI_CommandList::SetDepthStencilState(depth_stencil);
-            RHI_CommandList::SetRasterizerState(rasterizer);
+            RHI_CommandList::SetBlend(blend);
+            RHI_CommandList::SetDepth(depth_mode);
+            RHI_CommandList::SetRasterizer(rasterizer);
             RHI_CommandList::SetDepthTarget(depth);
 
             uint32_t color_index = 0;

@@ -38,13 +38,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rhi/RHI_Shader.h"
 #include "rhi/RHI_Texture.h"
 #include "rhi/RHI_SwapChain.h"
-#include "rhi/RHI_BlendState.h"
 #include "rhi/RHI_Queue.h"
 #include "rhi/RHI_CommandList.h"
 #include "rhi/RHI_Buffer.h"
 #include "rhi/RHI_PipelineState.h"
-#include "rhi/RHI_RasterizerState.h"
-#include "rhi/RHI_DepthStencilState.h"
 #include "rhi/RHI_FrameGeneration.h"
 #include <cfloat>
 #include <Settings.h>
@@ -96,12 +93,9 @@ namespace ImGui::RHI
         ViewportRhiResources g_viewport_data;
 
         // shared rhi resources (between all windows)
-        shared_ptr<RHI_Texture>           g_font_atlas;
-        shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
-        shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
-        shared_ptr<RHI_BlendState>        g_blend_state;
-        shared_ptr<RHI_Shader>            g_shader_vertex;
-        shared_ptr<RHI_Shader>            g_shader_pixel;
+        shared_ptr<RHI_Texture> g_font_atlas;
+        shared_ptr<RHI_Shader>  g_shader_vertex;
+        shared_ptr<RHI_Shader>  g_shader_pixel;
 
         // deferred so the os window is revealed only after the first successful present
         void (*g_platform_show_window)(ImGuiViewport*) = nullptr;
@@ -521,14 +515,14 @@ namespace ImGui::RHI
                 g_glass_push_constants.set(pass_blur::radius, radius);
                 g_glass_push_constants.set(pass_blur::vertical, false);
                 RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, backdrop);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, scratch);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), backdrop);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), scratch, rhi_all_mips, 0, true);
                 RHI_CommandList::Dispatch(group_count_x, group_count_y);
 
                 g_glass_push_constants.set(pass_blur::vertical, true);
                 RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, scratch);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, backdrop);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), scratch);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), backdrop, rhi_all_mips, 0, true);
                 RHI_CommandList::Dispatch(group_count_x, group_count_y);
             }
 
@@ -629,11 +623,8 @@ namespace ImGui::RHI
         // imgui textures are released earlier in shutdown(), guard in case event fires standalone
         destroy_imgui_textures();
 
-        g_font_atlas          = nullptr;
-        g_depth_stencil_state = nullptr;
-        g_rasterizer_state    = nullptr;
-        g_blend_state         = nullptr;
-        g_shader_vertex       = nullptr;
+        g_font_atlas    = nullptr;
+        g_shader_vertex = nullptr;
         g_shader_pixel        = nullptr;
         g_glass_target        = nullptr;
         g_glass_backdrop.fill(nullptr);
@@ -722,20 +713,7 @@ namespace ImGui::RHI
     {
         // create required RHI objects
         {
-            g_viewport_data       = ViewportRhiResources("imgui", RHI_Device::GetSwapChain());
-            g_depth_stencil_state = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Always);
-            g_rasterizer_state    = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid, true);
-
-            g_blend_state = make_shared<RHI_BlendState>
-            (
-                true,
-                RHI_Blend::Src_Alpha,     // source blend
-                RHI_Blend::Inv_Src_Alpha, // destination blend
-                RHI_Blend_Operation::Add, // blend op
-                RHI_Blend::Inv_Src_Alpha, // source blend alpha
-                RHI_Blend::Zero,          // destination blend alpha
-                RHI_Blend_Operation::Add  // destination op alpha
-            );
+            g_viewport_data = ViewportRhiResources("imgui", RHI_Device::GetSwapChain());
 
             // compile shaders
             {
@@ -1207,27 +1185,27 @@ namespace ImGui::RHI
             }
         }
 
-        // set pipeline state
-        static RHI_PipelineState pso         = {};
-        pso.name                             = "imgui";
-        pso.shaders[RHI_Shader_Type::Vertex] = g_shader_vertex.get();
-        pso.shaders[RHI_Shader_Type::Pixel]  = g_shader_pixel.get();
-        pso.rasterizer_state                 = g_rasterizer_state.get();
-        pso.blend_state                      = g_blend_state.get();
-        pso.depth_stencil_state              = g_depth_stencil_state.get();
-        pso.render_target_swapchain          = swapchain;
-        pso.render_target_color_textures.fill(nullptr);
-        pso.clear_color[0]                   = clear ? Color::standard_black : rhi_color_dont_care;
-        pso.use_standard_resources           = false;
-
-        auto setup_render_state = [&]()
+        auto setup_render_state = [&](RHI_Texture* target_texture, const Color& clear_color)
         {
             if (is_main_window)
             {
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
-            RHI_CommandList::SetPipelineState(pso);
-            RHI_CommandList::SetConstantBuffer(Renderer_BindingsCb::frame, Renderer::GetBuffer(Renderer_Buffer::ConstantFrame));
+            RHI_CommandList::SetPassName("imgui");
+            RHI_CommandList::SetUseStandardResources(false);
+            RHI_CommandList::SetShaders(g_shader_vertex.get(), g_shader_pixel.get());
+            RHI_CommandList::SetRasterizer(RHI_RasterizerMode::Solid);
+            RHI_CommandList::SetBlend(RHI_BlendMode::Ui);
+            RHI_CommandList::SetDepth(RHI_DepthMode::Off);
+            if (target_texture)
+            {
+                RHI_CommandList::SetColorTarget(target_texture, clear_color);
+            }
+            else
+            {
+                RHI_CommandList::SetSwapChain(swapchain, clear_color);
+            }
+            RHI_CommandList::SetConstantBuffer(static_cast<uint32_t>(Renderer_BindingsCb::frame), Renderer::GetBuffer(Renderer_Buffer::ConstantFrame));
             RHI_CommandList::SetBufferVertex(vertex_buffer);
             RHI_CommandList::SetBufferIndex(index_buffer);
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
@@ -1243,10 +1221,10 @@ namespace ImGui::RHI
         // frame_only replays just the 3d view draws, the frame generation hudless image
         // glass is the texture the pass draws into, null when glass windows are drawn without a backdrop
         // returns false when a capture is missing draws, a pipeline that is still compiling drops them and the target stays black
-        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture, const bool frame_only, RHI_Texture* glass)
+        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture, const bool frame_only, RHI_Texture* target_texture, const Color& initial_clear, RHI_Texture* glass)
         {
             RHI_CommandList::BeginPass(name, gpu_timing);
-            setup_render_state();
+            setup_render_state(target_texture, initial_clear);
 
             const float L = draw_data->DisplayPos.x;
             const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
@@ -1297,9 +1275,8 @@ namespace ImGui::RHI
                     RHI_CommandList::EndPass();
                     glass_capture_backdrop(glass);
                     RHI_CommandList::BeginPass(name, gpu_timing);
-                    pso.clear_color[0] = rhi_color_load;
                     RHI_CommandList::RestoreAfterExternalPass();
-                    setup_render_state();
+                    setup_render_state(target_texture, rhi_color_load);
                     glass_captured = true;
                     glass_dirty    = ImRect(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
                     state_valid    = false;
@@ -1328,7 +1305,7 @@ namespace ImGui::RHI
                 rectangle.width  = draw_data->DisplaySize.x * draw_data->FramebufferScale.x;
                 rectangle.height = draw_data->DisplaySize.y * draw_data->FramebufferScale.y;
                 RHI_CommandList::SetScissorRectangle(rectangle);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, texture);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), texture);
                 rhi_resources->push_constant_buffer_pass.set(pass_imgui::flags, flags);
                 rhi_resources->push_constant_buffer_pass.set(pass_imgui::mip_level, 0.0f);
                 rhi_resources->push_constant_buffer_pass.set(pass_imgui::array_level, 0.0f);
@@ -1373,9 +1350,8 @@ namespace ImGui::RHI
                         {
                             pcmd->UserCallback(cmd_list_imgui, pcmd);
                         }
-                        pso.clear_color[0] = rhi_color_load;
                         RHI_CommandList::RestoreAfterExternalPass();
-                        setup_render_state();
+                        setup_render_state(target_texture, rhi_color_load);
                         state_valid = false;
                     }
                     else
@@ -1459,7 +1435,7 @@ namespace ImGui::RHI
                             }
                             if (!state_valid || texture_bound != texture_last)
                             {
-                                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, texture_bound);
+                                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), texture_bound);
                                 texture_last = texture_bound;
                             }
 
@@ -1522,18 +1498,14 @@ namespace ImGui::RHI
         if (glass_target)
         {
             RHI_CommandList::ClearTexture(glass_target, Color::standard_black);
-            pso.render_target_swapchain         = nullptr;
-            pso.render_target_color_textures[0] = glass_target;
-            pso.clear_color[0]                  = rhi_color_load;
         }
 
-        const bool main_recorded = draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false, false, glass_target);
+        const Color main_clear   = glass_target ? rhi_color_load : (clear ? Color::standard_black : rhi_color_dont_care);
+        const bool main_recorded = draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false, false, glass_target, main_clear, glass_target);
 
         if (glass_target)
         {
             RHI_CommandList::Blit(glass_target, swapchain);
-            pso.render_target_color_textures[0] = nullptr;
-            pso.render_target_swapchain         = swapchain;
         }
 
         if (is_main_window)
@@ -1552,12 +1524,7 @@ namespace ImGui::RHI
             if (RHI_Texture* hudless = frame_rect_found && RHI_FrameGeneration::GetScene() ? RHI_FrameGeneration::GetHudlessTarget(swapchain->GetWidth(), swapchain->GetHeight(), swapchain->GetFormat()) : nullptr)
             {
                 RHI_CommandList::ClearTexture(hudless, Color::standard_black);
-                pso.render_target_swapchain         = nullptr;
-                pso.render_target_color_textures[0] = hudless;
-                pso.clear_color[0]                  = rhi_color_load;
-                draw_pass("imgui_frame_generation_hudless", false, false, false, true, nullptr);
-                pso.render_target_color_textures[0] = nullptr;
-                pso.render_target_swapchain         = swapchain;
+                draw_pass("imgui_frame_generation_hudless", false, false, false, true, hudless, rhi_color_load, nullptr);
                 RHI_FrameGeneration::SetHudlessRecorded();
             }
 
@@ -1565,11 +1532,7 @@ namespace ImGui::RHI
             {
                 // cleared once up front, a render pass restart (texture transitions) must load, not clear again
                 RHI_CommandList::ClearTexture(capture, Color::standard_black);
-                pso.render_target_swapchain         = nullptr;
-                pso.render_target_color_textures[0] = capture;
-                pso.clear_color[0]                  = rhi_color_load;
-                const bool recorded                 = draw_pass("imgui_screenshot", false, false, true, false, glass_target ? capture : nullptr);
-                pso.render_target_color_textures[0] = nullptr;
+                const bool recorded = draw_pass("imgui_screenshot", false, false, true, false, capture, rhi_color_load, glass_target ? capture : nullptr);
 
                 // an incomplete replay is not recorded, the request stays pending and the next frame replays it
                 if (recorded)
@@ -1581,11 +1544,7 @@ namespace ImGui::RHI
             {
                 // the whole ui is replayed and the save crops it to the viewport, so windows and overlays over the viewport show
                 RHI_CommandList::ClearTexture(capture, Color::standard_black);
-                pso.render_target_swapchain         = nullptr;
-                pso.render_target_color_textures[0] = capture;
-                pso.clear_color[0]                  = rhi_color_load;
-                const bool recorded                 = draw_pass("imgui_screenshot_viewport", false, false, true, false, glass_target ? capture : nullptr);
-                pso.render_target_color_textures[0] = nullptr;
+                const bool recorded = draw_pass("imgui_screenshot_viewport", false, false, true, false, capture, rhi_color_load, glass_target ? capture : nullptr);
 
                 // an incomplete replay is not recorded, the renderer holds the capture and the next frame replays it
                 if (recorded)

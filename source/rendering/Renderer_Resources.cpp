@@ -21,9 +21,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Texture.h"
 #include "../rhi/RHI_Shader.h"
 #include "../rhi/RHI_Sampler.h"
-#include "../rhi/RHI_BlendState.h"
-#include "../rhi/RHI_RasterizerState.h"
-#include "../rhi/RHI_DepthStencilState.h"
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Device.h"
 #include "../rhi/RHI_SyncPrimitive.h"
@@ -47,11 +44,6 @@ namespace spartan
     {
         template<typename E, typename A>
         auto& at(A& arr, E e) { return arr[static_cast<size_t>(e)]; }
-
-        // graphics states
-        array<shared_ptr<RHI_RasterizerState>, static_cast<uint32_t>(Renderer_RasterizerState::Max)>     rasterizer_states;
-        array<shared_ptr<RHI_DepthStencilState>, static_cast<uint32_t>(Renderer_DepthStencilState::Max)> depth_stencil_states;
-        array<shared_ptr<RHI_BlendState>, static_cast<uint32_t>(Renderer_BlendState::Max)>               blend_states;
 
         // renderer resources, the primary set also holds the world targets every view samples, the
         // secondary set only fills the per view slots and is sized to the secondary view
@@ -301,6 +293,16 @@ namespace spartan
             CULL_PHASE_COUNT, nullptr, false, "cull_phase"
         );
 
+        // visibility buffer tile classification: 3 indirect dispatch args (opaque, alpha, impostor) + compacted tile coords
+        at(buffers, Renderer_Buffer::VisibilityTileArgs) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
+            VIS_CATEGORY_COUNT, nullptr, false, "visibility_tile_args"
+        );
+        at(buffers, Renderer_Buffer::VisibilityTiles) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            VIS_CATEGORY_COUNT * 65536, nullptr, false, "visibility_tiles"
+        );
+
         // grid holds (first_index, count) per cluster, one grid serves both vr eyes since they diverge by well under a tile
         at(buffers, Renderer_Buffer::ClusterLightGrid) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 2),
@@ -528,41 +530,6 @@ namespace spartan
         );
     }
 
-    void Renderer::CreateDepthStencilStates()
-    {
-        // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        at(depth_stencil_states, Renderer_DepthStencilState::Off)              = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never);
-        at(depth_stencil_states, Renderer_DepthStencilState::ReadEqual)        = make_shared<RHI_DepthStencilState>(true,  false, RHI_Comparison_Function::Equal);
-        at(depth_stencil_states, Renderer_DepthStencilState::ReadGreaterEqual) = make_shared<RHI_DepthStencilState>(true,  false, RHI_Comparison_Function::GreaterEqual);
-        at(depth_stencil_states, Renderer_DepthStencilState::ReadWrite)        = make_shared<RHI_DepthStencilState>(true,  true,  RHI_Comparison_Function::GreaterEqual);
-    }
-
-    void Renderer::CreateRasterizerStates()
-    {
-        // bias is done in the shader, hw bias is uncontrollable across cascades
-        const float line_width = 3.0f;
-
-        //                                                                                                  fill mode,             depth clip, bias, bias clamp, slope scaled bias, line width
-        at(rasterizer_states, Renderer_RasterizerState::Solid)             = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  0.0f, 0.0f, 0.0f, line_width);
-        at(rasterizer_states, Renderer_RasterizerState::Wireframe)         = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Wireframe, true,  0.0f, 0.0f, 0.0f, line_width);
-        at(rasterizer_states, Renderer_RasterizerState::Light_point_spot)  = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  0.0f, 0.0f, 0.0f, line_width);
-        at(rasterizer_states, Renderer_RasterizerState::Light_directional) = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     false, 0.0f, 0.0f, 0.0f, line_width);
-    }
-
-    void Renderer::CreateBlendStates()
-    {
-        // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        at(blend_states, Renderer_BlendState::Off)           = make_shared<RHI_BlendState>(false);
-        at(blend_states, Renderer_BlendState::Alpha)         = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        at(blend_states, Renderer_BlendState::Premultiplied) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        at(blend_states, Renderer_BlendState::Additive)      = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
-        at(blend_states, Renderer_BlendState::Multiply)      = make_shared<RHI_BlendState>(true, RHI_Blend::Dest_Color, RHI_Blend::Zero,         RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        // surface overlays blend coverage into albedo while preserving the receiver's opaque alpha
-        at(blend_states, Renderer_BlendState::SurfaceAlpha)  = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        // dual-source rgb transmittance for forward transparency: dst = src0 + src1 * dst
-        at(blend_states, Renderer_BlendState::DualSourceTransmittance) = make_shared<RHI_BlendState>(true, RHI_Blend::One, RHI_Blend::Src1_Color, RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-    }
-
     void Renderer::CreateSamplers()
     {
         auto create_sampler = [](Renderer_Sampler type, RHI_Filter filter_min, RHI_Filter filter_mag, RHI_Filter filter_mip,
@@ -759,7 +726,7 @@ namespace spartan
         }
         
         // a secondary view is absent from the tlas and never traces, it only needs the raster targets
-        const bool can_trace    = RHI_Device::IsSupportedRayTracing() && !is_secondary_target_set();
+        const bool can_trace    = RHI_Device::Caps().ray_tracing && !is_secondary_target_set();
         const bool rt_half      = should_use_half_res(cvar_rt_half_res.GetValue(), height);
         const uint32_t rt_width = rt_half ? max(width / 2, 1u) : width;
         const uint32_t rt_height = rt_half ? max(height / 2, 1u) : height;
@@ -997,6 +964,7 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::dlss_reactivity)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth)               = nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth_previous)      = nullptr;
+            at(view_targets(), Renderer_RenderTarget::visibility_buffer)           = nullptr;
             at(view_targets(), Renderer_RenderTarget::light_diffuse)               = nullptr;
             at(view_targets(), Renderer_RenderTarget::light_specular)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::light_diffuse_scattered)     = nullptr;
@@ -1128,15 +1096,22 @@ namespace spartan
             // debug output sits at render resolution so debug raster passes can share gbuffer_depth for read-equal tests
             at(view_targets(), Renderer_RenderTarget::debug_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "debug_output");
 
-            // gbuffer, concurrent sharing so async compute (ssao, sss) can read while graphics writes
+            // gbuffer, concurrent sharing so async compute (ssao, sss) can read while graphics writes;
+            // uav lets the visibility material resolve compute pass populate the g-buffer directly
             uint32_t flags = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
-            at(view_targets(), Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_color");
+            #ifndef __EMSCRIPTEN__
+            uint32_t gbuffer_color_flags = flags | RHI_Texture_Uav;
+            #else
+            uint32_t gbuffer_color_flags = flags;
+            #endif
+            at(view_targets(), Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     gbuffer_color_flags, "gbuffer_color");
             // normal and material are bit packed, see gbuffer_pack_normal and gbuffer_pack_material in common.hlsl
-            at(view_targets(), Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32G32_Uint,           flags, "gbuffer_normal");
-            at(view_targets(), Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32_Uint,           flags, "gbuffer_material");
-            at(view_targets(), Renderer_RenderTarget::gbuffer_emissive) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_emissive");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32G32_Uint,           gbuffer_color_flags, "gbuffer_normal");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32_Uint,           gbuffer_color_flags, "gbuffer_material");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_emissive) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R11G11B10_Float, gbuffer_color_flags, "gbuffer_emissive");
             // rgba: xy = ndc velocity, z = radial motion blur mask, w = signed previous surface depth
-            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, gbuffer_color_flags, "gbuffer_velocity");
+            at(view_targets(), Renderer_RenderTarget::visibility_buffer) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32_Uint, gbuffer_color_flags, "visibility_buffer");
             at(view_targets(), Renderer_RenderTarget::dlss_reactivity)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "dlss_reactivity");
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
             // restir's temporal gate tests disocclusion against the prior depth, the current frame's depth ghosts moving objects
@@ -1144,10 +1119,10 @@ namespace spartan
             m_pass_state.depth_history_cleared = false;
             // previous frame normals for the same gate, sampling the current normal buffer at
             // prev_uv reads a different surface whenever anything moved
-            at(view_targets(), Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32G32_Uint, flags, "gbuffer_normal_previous");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32G32_Uint, gbuffer_color_flags, "gbuffer_normal_previous");
             // previous frame velocity, restir's temporal pass reads the occluder's motion at the
             // reprojected position to build a dual motion vector on disocclusion, lin 2026 6.4
-            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity_previous");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, gbuffer_color_flags, "gbuffer_velocity_previous");
 
             // hi-z pyramids, amd depth format restrictions force a separate r32 texture for uav and a manual blit
             // full mip chain so the cull shader can pick a level where the bounds fit in ~1-2 texels
@@ -1185,7 +1160,7 @@ namespace spartan
             // the diffuse light after it has travelled under the surface, written only while a diffusion profile is on screen
             at(view_targets(), Renderer_RenderTarget::light_diffuse_scattered) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_diffuse_scattered");
 
-            const bool rt_supported      = RHI_Device::IsSupportedRayTracing();
+            const bool rt_supported      = RHI_Device::Caps().ray_tracing;
             const bool rt_half           = rt_supported && !is_secondary_target_set() && should_use_half_res(cvar_rt_half_res.GetValue(), height_render);
             const uint32_t rt_width      = rt_supported ? (rt_half ? max(width_render / 2, 1u) : width_render) : 1;
             const uint32_t rt_height     = rt_supported ? (rt_half ? max(height_render / 2, 1u) : height_render) : 1;
@@ -1213,11 +1188,11 @@ namespace spartan
         // gated by cvar_restir_pt so disabling restir frees the output ring as well as the reservoir slots managed by UpdateOptionalRenderTargets
         auto create_shadow_atlas_and_misc = [&]()
         {
-            if (RHI_Device::IsSupportedVrs())
+            if (RHI_Device::Caps().vrs)
             {
                 // vrs texture dimensions must match the gpu's reported texel size
-                uint32_t texel_size_x = max(RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), 1u);
-                uint32_t texel_size_y = max(RHI_Device::PropertyGetMaxShadingRateTexelSizeY(), 1u);
+                uint32_t texel_size_x = max(RHI_Device::Caps().max_shading_rate_texel_size_x, 1u);
+                uint32_t texel_size_y = max(RHI_Device::Caps().max_shading_rate_texel_size_y, 1u);
                 uint32_t vrs_width    = (width_render + texel_size_x - 1) / texel_size_x;
                 uint32_t vrs_height   = (height_render + texel_size_y - 1) / texel_size_y;
                 at(view_targets(), Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, vrs_width, vrs_height, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shading_rate");
@@ -1229,7 +1204,7 @@ namespace spartan
             #else
             const uint32_t base_atlas_resolution = renderer_resolution_shadow_atlas;
             #endif
-            const uint32_t atlas_resolution = min(is_secondary_target_set() ? base_atlas_resolution / 2 : base_atlas_resolution, RHI_Device::PropertyGetMaxTexture2dDimension());
+            const uint32_t atlas_resolution = min(is_secondary_target_set() ? base_atlas_resolution / 2 : base_atlas_resolution, RHI_Device::Caps().max_texture_2d_dimension);
             at(view_targets(), Renderer_RenderTarget::shadow_atlas) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_resolution, atlas_resolution, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shadow_atlas");
         };
 
@@ -1537,8 +1512,8 @@ namespace spartan
             bool            ms_only = false;
         };
 
-        const bool rt = RHI_Device::IsSupportedRayTracing();
-        const bool ms = RHI_Device::IsSupportedMeshShaders();
+        const bool rt = RHI_Device::Caps().ray_tracing;
+        const bool ms = RHI_Device::Caps().mesh_shaders;
 
         const ShaderEntry table[] =
         {
@@ -1677,9 +1652,21 @@ namespace spartan
             { Renderer_Shader::meshlet_mesh_depth_alpha_m,            RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_late_m,             RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_LATE", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_alpha_late_m,       RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, "DEPTH_LATE", true },
+            { Renderer_Shader::meshlet_mesh_visibility_m,             RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "VISIBILITY_PASS", true, false, nullptr, true },
+            { Renderer_Shader::meshlet_mesh_visibility_alpha_m,       RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "VISIBILITY_ALPHA", true, false, nullptr, true },
+            { Renderer_Shader::meshlet_mesh_visibility_late_m,        RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "VISIBILITY_PASS", true, false, "DEPTH_LATE", true },
+            { Renderer_Shader::meshlet_mesh_visibility_alpha_late_m,  RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "VISIBILITY_ALPHA", true, false, "DEPTH_LATE", true },
             { Renderer_Shader::impostor_mesh_m,                       RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
             { Renderer_Shader::impostor_mesh_depth_m,                 RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, "DEPTH_ONLY", true, false, nullptr, true },
             { Renderer_Shader::impostor_mesh_depth_late_m,            RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, "DEPTH_ONLY", true, false, "DEPTH_LATE", true },
+            { Renderer_Shader::impostor_mesh_visibility_m,            RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, "VISIBILITY_PASS", true, false, nullptr, true },
+            { Renderer_Shader::impostor_mesh_visibility_late_m,       RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, "VISIBILITY_PASS", true, false, "DEPTH_LATE", true },
+            { Renderer_Shader::visibility_opaque_p,                   RHI_Shader_Type::Pixel,         "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "VISIBILITY_OPAQUE", true, false, nullptr, true },
+            { Renderer_Shader::visibility_alpha_p,                    RHI_Shader_Type::Pixel,         "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "VISIBILITY_ALPHA", true, false, nullptr, true },
+            { Renderer_Shader::visibility_classify_c,                 RHI_Shader_Type::Compute,       "visibility_classify.hlsl",                   RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
+            { Renderer_Shader::visibility_resolve_opaque_c,           RHI_Shader_Type::Compute,       "visibility_resolve.hlsl",                    RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
+            { Renderer_Shader::visibility_resolve_alpha_c,            RHI_Shader_Type::Compute,       "visibility_resolve.hlsl",                    RHI_Vertex_Type::Max, "ALPHA_SPECIALIZED", true, false, nullptr, true },
+            { Renderer_Shader::visibility_resolve_impostor_c,         RHI_Shader_Type::Compute,       "visibility_resolve.hlsl",                    RHI_Vertex_Type::Max, "IMPOSTOR_SPECIALIZED", true, false, nullptr, true },
             { Renderer_Shader::meshlet_visualize_m,                   RHI_Shader_Type::MeshShader, "meshlet_mesh.hlsl", RHI_Vertex_Type::Max, "MESHLET_VISUALIZE", true, false, nullptr, true },
             { Renderer_Shader::meshlet_visualize_alpha_m,             RHI_Shader_Type::MeshShader, "meshlet_mesh.hlsl", RHI_Vertex_Type::Max, "MESHLET_VISUALIZE", true, false, "GBUFFER_ALPHA", true },
             { Renderer_Shader::meshlet_visualize_v,                   RHI_Shader_Type::Vertex,  "meshlet_visualize.hlsl"                                                     },
@@ -1784,7 +1771,7 @@ namespace spartan
             {
                 continue;
             }
-            if ((e.stage == RHI_Shader_Type::Hull || e.stage == RHI_Shader_Type::Domain) && !RHI_Device::IsSupportedTessellation())
+            if ((e.stage == RHI_Shader_Type::Hull || e.stage == RHI_Shader_Type::Domain) && !RHI_Device::Caps().tessellation)
             {
                 continue;
             }
@@ -2207,21 +2194,6 @@ namespace spartan
     array<RHI_Texture*, rhi_max_array_size>& Renderer::GetBindlessMaterialTextures()
     {
         return m_bindless_textures;
-    }
-
-    RHI_RasterizerState* Renderer::GetRasterizerState(const Renderer_RasterizerState type)
-    {
-        return rasterizer_states[static_cast<uint8_t>(type)].get();
-    }
-
-    RHI_DepthStencilState* Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
-    {
-        return depth_stencil_states[static_cast<uint8_t>(type)].get();
-    }
-
-    RHI_BlendState* Renderer::GetBlendState(const Renderer_BlendState type)
-    {
-        return blend_states[static_cast<uint8_t>(type)].get();
     }
 
     RHI_Texture* Renderer::GetRenderTarget(const Renderer_RenderTarget type)

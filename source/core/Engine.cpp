@@ -166,17 +166,17 @@ namespace spartan
             // existing users keep their saved preferences
             if (!Settings::HasLoadedUserSettingsFromFile())
             {
-                bool ray_tracing_supported = RHI_Device::IsSupportedRayTracing();
+                bool ray_tracing_supported = RHI_Device::Caps().ray_tracing;
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", std::to_string(static_cast<float>(ray_tracing_supported)));
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_shadows", std::to_string(static_cast<float>(ray_tracing_supported)));
-                ConsoleRegistry::Get().SetValueFromString("r.mesh_shaders", std::to_string(static_cast<float>(RHI_Device::IsSupportedMeshShaders())));
+                ConsoleRegistry::Get().SetValueFromString("r.mesh_shaders", std::to_string(static_cast<float>(RHI_Device::Caps().mesh_shaders)));
 
                 Renderer_AntiAliasing_Upsampling aa = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
-                if (RHI_Device::IsSupportedDlss())
+                if (RHI_Device::Caps().dlss)
                 {
                     aa = Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss;
                 }
-                else if (RHI_Device::IsSupportedMetalFx())
+                else if (RHI_Device::Caps().metalfx)
                 {
                     aa = Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx;
                 }

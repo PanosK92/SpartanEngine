@@ -213,7 +213,7 @@ namespace spartan
             // the converter has no view instancing and metal has no xr, so the view id becomes a vertex input that reads 0
             arguments.emplace_back("-D");
             arguments.emplace_back("SV_ViewID=SP_VIEW_ID");
-            if (RHI_Device::IsSupportedShaderBaseInstance())
+            if (RHI_Device::Caps().shader_base_instance)
             {
                 arguments.emplace_back("-D");
                 arguments.emplace_back("SP_BASE_INSTANCE=1");

@@ -34,6 +34,32 @@ namespace spartan
         ComputeB
     };
 
+    struct RHI_DeviceCaps
+    {
+        float    timestamp_period                         = 0.0f;
+        uint64_t min_uniform_buffer_offset_alignment      = 0;
+        uint64_t min_storage_buffer_offset_alignment      = 0;
+        uint64_t min_acceleration_buffer_offset_alignment = 0;
+        uint64_t optimal_buffer_copy_offset_alignment     = 0;
+        uint32_t max_texture_2d_dimension                 = 0;
+        uint32_t max_push_constant_size                   = 0;
+        uint32_t max_shading_rate_texel_size_x            = 0;
+        uint32_t max_shading_rate_texel_size_y            = 0;
+        uint32_t shader_group_handle_size                 = 0;
+        uint32_t shader_group_handle_alignment            = 0;
+        uint32_t shader_group_base_alignment              = 0;
+        bool     vrs                                      = false;
+        bool     xess                                     = false;
+        bool     dlss                                     = false;
+        bool     metalfx                                  = false;
+        bool     ray_tracing                              = false;
+        bool     mesh_shaders                             = false;
+        bool     tessellation                             = true;
+        // whether a vertex shader can recover firstInstance from an indirect draw
+        bool     shader_base_instance                     = false;
+        bool     bc_compression                           = true;
+    };
+
     class RHI_Device
     {
     public:
@@ -87,11 +113,13 @@ namespace spartan
         static void* GetQueueRhiResource(const RHI_Queue_Type type);
 
         // descriptors
+#if defined(API_GRAPHICS_VULKAN)
         static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const std::vector<RHI_DescriptorWithBinding>& descriptors);
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static std::mutex& GetDescriptorSetMutex();
         static uint64_t GetDescriptorSetFrame();
         static void DescriptorSetInvalidateReferencingResource(void* resource);
+#endif
         static void* GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Bindless_Resource resource_type);
         static void UpdateBindlessMaterials(std::array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters);
@@ -104,7 +132,10 @@ namespace spartan
         static void UpdateBindlessInstances(RHI_Buffer* buffer);
 
         // pipelines
+        static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline);
+#if defined(API_GRAPHICS_VULKAN)
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
+#endif
         static uint32_t GetPipelineCount();
         // pipelines still compiling in the background, their passes are skipped until they are ready
         static uint32_t GetPipelineCompilingCount();
@@ -139,29 +170,8 @@ namespace spartan
         static double GetCpuTimestampMs();
         static RHI_TimestampCalibration GetTimestampCalibration(RHI_Queue_Type queue);
 
-        // properties (actual silicon properties)
-        static float PropertyGetTimestampPeriod()                         { return m_timestamp_period; }
-        static uint64_t PropertyGetMinUniformBufferOffsetAlignment()      { return m_min_uniform_buffer_offset_alignment; }
-        static uint64_t PropertyGetMinStorageBufferOffsetAlignment()      { return m_min_storage_buffer_offset_alignment; }
-        static uint64_t PropertyGetMinAccelerationBufferOffsetAlignment() { return m_min_acceleration_buffer_offset_alignment; }
-        static uint32_t PropertyGetMaxTexture2dDimension()                { return m_max_texture_2d_dimension; }
-        static uint32_t PropertyGetMaxPushConstantSize()                  { return m_max_push_constant_size; }
-        static uint32_t PropertyGetMaxShadingRateTexelSizeX()             { return m_max_shading_rate_texel_size_x; }
-        static uint32_t PropertyGetMaxShadingRateTexelSizeY()             { return m_max_shading_rate_texel_size_y; }
-        static uint64_t PropertyGetOptimalBufferCopyOffsetAlignment()     { return m_optimal_buffer_copy_offset_alignment; }
-        static uint32_t PropertyGetShaderGroupHandleSize()                { return m_shader_group_handle_size; }
-        static uint32_t PropertyGetShaderGroupHandleAlignment()           { return m_shader_group_handle_alignment; }
-        static uint32_t PropertyGetShaderGroupBaseAlignment()             { return m_shader_group_base_alignment; }
-        static bool IsSupportedVrs()                                      { return m_is_shading_rate_supported; }
-        static bool IsSupportedXess()                                     { return m_xess_supported; }
-        static bool IsSupportedDlss()                                     { return m_dlss_supported; }
-        static bool IsSupportedMetalFx()                                  { return m_metalfx_supported; }
-        static bool IsSupportedRayTracing()                               { return m_is_ray_tracing_supported; }
-        static bool IsSupportedMeshShaders()                              { return m_is_mesh_shaders_supported; }
-        static bool IsSupportedTessellation()                             { return m_is_tessellation_supported; }
-        // Whether a vertex shader can recover firstInstance from an indirect draw.
-        static bool IsSupportedShaderBaseInstance()                       { return m_is_shader_base_instance_supported; }
-        static bool IsSupportedBcCompression()                            { return m_is_bc_compression_supported; }
+        // capabilities and silicon limits
+        static const RHI_DeviceCaps& Caps() { return m_caps; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color);
@@ -211,28 +221,8 @@ namespace spartan
         friend class RHI_VendorTechnology;
         friend class RHI_FrameGeneration;
         friend class RHI_AccelerationStructure;
-        // properties
-        static float m_timestamp_period;
-        static uint64_t m_min_uniform_buffer_offset_alignment;
-        static uint64_t m_min_storage_buffer_offset_alignment;
-        static uint64_t m_min_acceleration_buffer_offset_alignment;
-        static uint32_t m_max_texture_2d_dimension;
-        static uint32_t m_max_push_constant_size;
-        static uint32_t m_max_shading_rate_texel_size_x;
-        static uint32_t m_max_shading_rate_texel_size_y;
-        static uint64_t m_optimal_buffer_copy_offset_alignment;
-        static uint32_t m_shader_group_handle_size;
-        static uint32_t m_shader_group_handle_alignment;
-        static uint32_t m_shader_group_base_alignment;
-        static bool m_is_shading_rate_supported;
-        static bool m_xess_supported;
-        static bool m_dlss_supported;
-        static bool m_metalfx_supported;
-        static bool m_is_ray_tracing_supported;
-        static bool m_is_mesh_shaders_supported;
-        static bool m_is_tessellation_supported;
-        static bool m_is_shader_base_instance_supported;
-        static bool m_is_bc_compression_supported;
+        // capabilities
+        static RHI_DeviceCaps m_caps;
         static void (*m_pipeline_bound_callback)(RHI_CommandList*);
         static const void* m_default_push_constants;
         static uint32_t m_default_push_constants_size;

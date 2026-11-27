@@ -181,7 +181,7 @@ namespace spartan
                         if (other.GetType() == TimeBlockType::Gpu && other.GetQueueType() == block.GetQueueType())
                             queue_reference = min(queue_reference, other.GetTimestampRawTick(other.GetTimestampIndexStart()));
 #endif
-                    block.ResolveGpuTimestamps(queue_reference, RHI_Device::PropertyGetTimestampPeriod());
+                    block.ResolveGpuTimestamps(queue_reference, RHI_Device::Caps().timestamp_period);
                 }
             return true;
         }

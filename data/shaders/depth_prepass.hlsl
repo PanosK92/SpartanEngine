@@ -10,6 +10,19 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_tessellation.hlsl"
 //=================================
 
+#ifdef VISIBILITY_ALPHA
+#define ALPHA_TEST_INDIRECT
+#define DEPTH_MESH_ALPHA
+#define VISIBILITY_PASS
+#endif
+
+#ifdef VISIBILITY_OPAQUE
+[earlydepthstencil]
+uint main_ps(uint vis_id : SV_PrimitiveID) : SV_Target0
+{
+    return vis_id;
+}
+#else
 #ifdef INDIRECT_DRAW
 gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
 {
@@ -57,7 +70,9 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 #ifdef ALPHA_TEST_INDIRECT
 // indirect path discards based on material flags read from the bindless material parameters
 // non-alpha-tested materials early out so they only pay vertex cost in the prepass
-#ifdef DEPTH_MESH_ALPHA
+#ifdef VISIBILITY_PASS
+uint main_ps(depth_mesh_vertex vertex, uint vis_id : SV_PrimitiveID) : SV_Target0
+#elif defined(DEPTH_MESH_ALPHA)
 void main_ps(depth_mesh_vertex vertex)
 #else
 void main_ps(gbuffer_vertex vertex)
@@ -68,7 +83,13 @@ void main_ps(gbuffer_vertex vertex)
     MaterialParameters material = GetMaterial();
     const bool is_impostor = vertex.uv_misc.z < -0.5f;
     if (!material.is_alpha_tested() && !is_impostor)
+    {
+#ifdef VISIBILITY_PASS
+        return vis_id;
+#else
         return;
+#endif
+    }
 
     // complementary screen-door dither across the 3D-tree <-> impostor transition band
     if (vertex.uv_misc.w < 1.5f)
@@ -89,12 +110,19 @@ void main_ps(gbuffer_vertex vertex)
         _draw = indirect_draw_data[(uint)round(-vertex.uv_misc.z) - 1u];
         if (!impostor_alpha_test(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), alpha_threshold))
             discard;
+#ifdef VISIBILITY_PASS
+        return vis_id;
+#else
         return;
+#endif
     }
 
     float a = GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_bilinear_wrap], vertex.uv_misc.xy).a;
     if (a <= alpha_threshold)
         discard;
+#ifdef VISIBILITY_PASS
+    return vis_id;
+#endif
 }
 #else
 void main_ps(gbuffer_vertex vertex)
@@ -116,4 +144,5 @@ void main_ps(gbuffer_vertex vertex)
     if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
         discard;
 }
+#endif
 #endif

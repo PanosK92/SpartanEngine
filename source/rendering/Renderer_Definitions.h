@@ -534,9 +534,21 @@ namespace spartan
         meshlet_mesh_depth_alpha_m,
         meshlet_mesh_depth_late_m,
         meshlet_mesh_depth_alpha_late_m,
+        meshlet_mesh_visibility_m,
+        meshlet_mesh_visibility_alpha_m,
+        meshlet_mesh_visibility_late_m,
+        meshlet_mesh_visibility_alpha_late_m,
         impostor_mesh_m,
         impostor_mesh_depth_m,
         impostor_mesh_depth_late_m,
+        impostor_mesh_visibility_m,
+        impostor_mesh_visibility_late_m,
+        visibility_opaque_p,
+        visibility_alpha_p,
+        visibility_classify_c,
+        visibility_resolve_opaque_c,
+        visibility_resolve_alpha_c,
+        visibility_resolve_impostor_c,
         meshlet_visualize_m,
         meshlet_visualize_alpha_m,
         meshlet_visualize_v,
@@ -586,6 +598,7 @@ namespace spartan
         gbuffer_velocity_previous,
         gbuffer_depth,
         gbuffer_depth_previous,
+        visibility_buffer,       // packed per-pixel (meshlet/impostor, triangle) id written by Pass_Visibility
         gbuffer_depth_hiz,       // min depth pyramid of the complete opaque depth, last frame's until the late prepass rebuilds it
         gbuffer_depth_hiz_early, // min depth pyramid of the early prepass depth, what the late cull tests against
         gbuffer_depth_opaque_output,
@@ -776,6 +789,8 @@ namespace spartan
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
         ImpostorInstances,         // phase a impostor survivor list, batched 16 quads per mesh workgroup
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
+        VisibilityTileArgs,        // 3 indirect dispatch args (opaque, alpha, impostor) built by visibility_classify
+        VisibilityTiles,           // compacted 8x8 tile coordinates per visibility category for material resolve
         Decals,
         RainOcclusion,             // topmost static surface height per cell around the camera, ring-buffered per frame
         CarRainDrops,              // the occupied car's drops, ring-buffered per frame
@@ -869,36 +884,6 @@ namespace spartan
         Cortao_bent_normal_lut,
         Black,
         White,
-        Max
-    };
-
-    enum class Renderer_RasterizerState
-    {
-        Solid,
-        Wireframe,
-        Light_point_spot,
-        Light_directional,
-        Max
-    };
-
-    enum class Renderer_DepthStencilState
-    {
-        Off,
-        ReadEqual,
-        ReadGreaterEqual,
-        ReadWrite,
-        Max
-    };
-
-    enum class Renderer_BlendState
-    {
-        Off,
-        Alpha,
-        Premultiplied,
-        Additive,
-        Multiply,
-        SurfaceAlpha,
-        DualSourceTransmittance,
         Max
     };
 

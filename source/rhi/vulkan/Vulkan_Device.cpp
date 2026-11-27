@@ -15,10 +15,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Queue.h"
-#include "../RHI_DescriptorSet.h"
+#include "RHI_DescriptorSet.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Shader.h"
-#include "../RHI_DescriptorSetLayout.h"
+#include "RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_CommandList.h"
@@ -252,7 +252,7 @@ namespace spartan
 
         void get_pointers_from_device()
         {
-            if (RHI_Device::IsSupportedMeshShaders())
+            if (RHI_Device::Caps().mesh_shaders)
             {
                 load_device(reinterpret_cast<void**>(&draw_mesh_tasks_indirect), "vkCmdDrawMeshTasksIndirectEXT");
             }
@@ -981,7 +981,7 @@ namespace spartan
             {
                 allocator_info.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
             }
-            if (RHI_Device::IsSupportedRayTracing())
+            if (RHI_Device::Caps().ray_tracing)
             {
                 allocator_info.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
             }
@@ -1240,7 +1240,7 @@ namespace spartan
             pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT |
                                                           VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-            pool_create_info.poolSizeCount              = RHI_Device::IsSupportedRayTracing() ? static_cast<uint32_t>(pool_sizes.size()) : static_cast<uint32_t>(pool_sizes.size() - 1);
+            pool_create_info.poolSizeCount              = RHI_Device::Caps().ray_tracing ? static_cast<uint32_t>(pool_sizes.size()) : static_cast<uint32_t>(pool_sizes.size() - 1);
             pool_create_info.pPoolSizes                 = pool_sizes.data();
             pool_create_info.maxSets                    = rhi_max_descriptor_set_count;
 
@@ -2418,18 +2418,18 @@ namespace spartan
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
                 // save some properties
-                m_timestamp_period                         = properties_device.properties.limits.timestampPeriod;
-                m_min_uniform_buffer_offset_alignment      = properties_device.properties.limits.minUniformBufferOffsetAlignment;
-                m_min_storage_buffer_offset_alignment      = properties_device.properties.limits.minStorageBufferOffsetAlignment;
-                m_min_acceleration_buffer_offset_alignment = acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
-                m_max_texture_2d_dimension                 = properties_device.properties.limits.maxImageDimension2D;
-                m_max_push_constant_size                   = properties_device.properties.limits.maxPushConstantsSize;
-                m_max_shading_rate_texel_size_x            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
-                m_max_shading_rate_texel_size_y            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
-                m_optimal_buffer_copy_offset_alignment     = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
-                m_shader_group_handle_size                 = ray_tracing_properties.shaderGroupHandleSize;
-                m_shader_group_handle_alignment            = ray_tracing_properties.shaderGroupHandleAlignment;
-                m_shader_group_base_alignment              = ray_tracing_properties.shaderGroupBaseAlignment;
+                m_caps.timestamp_period                         = properties_device.properties.limits.timestampPeriod;
+                m_caps.min_uniform_buffer_offset_alignment      = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_caps.min_storage_buffer_offset_alignment      = properties_device.properties.limits.minStorageBufferOffsetAlignment;
+                m_caps.min_acceleration_buffer_offset_alignment = acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
+                m_caps.max_texture_2d_dimension                 = properties_device.properties.limits.maxImageDimension2D;
+                m_caps.max_push_constant_size                   = properties_device.properties.limits.maxPushConstantsSize;
+                m_caps.max_shading_rate_texel_size_x            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
+                m_caps.max_shading_rate_texel_size_y            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
+                m_caps.optimal_buffer_copy_offset_alignment     = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
+                m_caps.shader_group_handle_size                 = ray_tracing_properties.shaderGroupHandleSize;
+                m_caps.shader_group_handle_alignment            = ray_tracing_properties.shaderGroupHandleAlignment;
+                m_caps.shader_group_base_alignment              = ray_tracing_properties.shaderGroupBaseAlignment;
 
                 // disable profiler if timestamps are not supported
                 if (cvar_debug_gpu_timing.GetValue())
@@ -2442,10 +2442,10 @@ namespace spartan
             ngx_dlss::append_device_extensions();
 #endif
             vector<const char*> extensions_supported = extensions::get_extensions_device();
-            device_features::detect(&m_is_shading_rate_supported, &m_xess_supported, &m_is_ray_tracing_supported, &m_is_mesh_shaders_supported);
+            device_features::detect(&m_caps.vrs, &m_caps.xess, &m_caps.ray_tracing, &m_caps.mesh_shaders);
             // SPIR-V InstanceIndex already includes firstInstance.
-            m_is_shader_base_instance_supported = true;
-            m_dlss_supported = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
+            m_caps.shader_base_instance = true;
+            m_caps.dlss = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
 
             // create
             {
@@ -2500,7 +2500,7 @@ namespace spartan
     RHI_TimestampCalibration RHI_Device::GetTimestampCalibration(RHI_Queue_Type queue)
     {
         RHI_TimestampCalibration result;
-        result.period_ns = PropertyGetTimestampPeriod();
+        result.period_ns = m_caps.timestamp_period;
         uint32_t count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(RHI_Context::device_physical, &count, nullptr);
         vector<VkQueueFamilyProperties> families(count);
@@ -2593,7 +2593,7 @@ namespace spartan
         lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
         for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
         {
-            if (it->second.IsReferingToResource(resource))
+            if (it->second.ReferencesResource(resource))
             {
                 descriptors::queue_set_free(it->second.GetResource());
                 it = descriptors::sets.erase(it);
@@ -3004,6 +3004,12 @@ namespace spartan
     }
 
     // pipelines
+
+    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline)
+    {
+        RHI_DescriptorSetLayout* layout = nullptr;
+        GetOrCreatePipeline(pso, pipeline, layout);
+    }
 
     void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
     {
@@ -3522,7 +3528,7 @@ namespace spartan
 
     void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)
     {
-        if (!m_is_shading_rate_supported)
+        if (!m_caps.vrs)
         {
             return;
         }

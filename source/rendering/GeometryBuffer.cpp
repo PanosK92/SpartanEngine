@@ -276,7 +276,7 @@ namespace spartan
         {
             if (current && committed_bytes > 0)
             {
-                RHI_CommandList::CopyBufferContents(current.get(), replacement.get(), committed_bytes);
+                RHI_CommandList::CopyBuffer(current.get(), replacement.get(), committed_bytes);
             }
             current = std::move(replacement);
         }

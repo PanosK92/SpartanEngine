@@ -8,7 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =================
 #include "pch.h"
 #include "RHI_DescriptorSet.h"
-#include "RHI_Device.h"
+#include "../RHI_Device.h"
 //============================
 
 namespace spartan
@@ -27,7 +27,7 @@ namespace spartan
         Update(descriptors);
     }
 
-    bool RHI_DescriptorSet::IsReferingToResource(void* resource) const
+    bool RHI_DescriptorSet::ReferencesResource(void* resource) const
     {
         for (const RHI_DescriptorWithBinding& desc : m_descriptors)
         {

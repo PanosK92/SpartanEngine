@@ -576,11 +576,16 @@ TreeWindState unpack_tree_wind(float4 axis_drive, float4 phase_gust_micro)
 }
 
 #ifdef CACHE_MESH_TREE_WIND
-groupshared TreeWindState mesh_tree_wind_current;
-groupshared TreeWindState mesh_tree_wind_previous;
-groupshared float4x4 mesh_transform;
+#ifdef CACHE_MESH_TREE_WIND_PER_THREAD
+#define MESH_WIND_STORAGE static
+#else
+#define MESH_WIND_STORAGE groupshared
+#endif
+MESH_WIND_STORAGE TreeWindState mesh_tree_wind_current;
+MESH_WIND_STORAGE TreeWindState mesh_tree_wind_previous;
+MESH_WIND_STORAGE float4x4 mesh_transform;
 #ifndef CACHE_MESH_TREE_WIND_CURRENT_ONLY
-groupshared float4x4 mesh_transform_previous;
+MESH_WIND_STORAGE float4x4 mesh_transform_previous;
 #endif
 void cache_mesh_instance(DrawData draw, uint instance_index, uint cache_slot_plus_one)
 {
@@ -1172,6 +1177,21 @@ uint2 impostor_nearest_frame(float3 view_local, uint frames)
     return (uint2)clamp(round(f), 0.0f, (float)(frames - 1));
 }
 
+// per-frame conservative [0, 1] UV bounding box (u0, v0, u1, v1) stored right after the atlas texels
+float4 impostor_frame_bounds(DrawData draw, uint2 frame, uint frames)
+{
+    uint resolution = (draw.impostor_layout >> 8u) & 0xFFFFu;
+    uint layers     = (draw.impostor_layout >> 24u) & 0x7Fu;
+    uint bounds_idx = draw.impostor_texel_offset + frames * frames * resolution * resolution * layers * 2u + frame.y * frames + frame.x;
+    uint packed     = meshlet_vertices[bounds_idx];
+    return float4(
+        (float)(packed & 0xFFu),
+        (float)((packed >> 8u) & 0xFFu),
+        (float)((packed >> 16u) & 0xFFu),
+        (float)(packed >> 24u)
+    ) * (1.0f / 255.0f);
+}
+
 // fast silhouette test for depth prepass: baked rgba impostors need zero texture fetches (one uint load)
 static const float TREE_IMPOSTOR_FADE_BAND = 1.35f;
 
@@ -1235,6 +1255,11 @@ bool impostor_alpha_test(float2 uv_frames, MaterialTexture2D albedo_texture, flo
     return false;
 }
 
+#ifdef VISIBILITY_RESOLVE
+static float2 vis_duv_dx;
+static float2 vis_duv_dy;
+#endif
+
 // uv holds frame + position inside the frame; performs depth-guided view parallax and validity-aware
 // 2x2 bilinear filtering on baked_rgba impostors, unpacking rgb, volumetric cavity ao, micro-normal, and depth_z
 bool impostor_resolve(
@@ -1269,8 +1294,12 @@ bool impostor_resolve(
     if (baked_rgba)
     {
         // Compute screen-space texel footprint before branching on validity so derivatives remain well-defined.
-        float2 texel_coords    = uv_in_frame * (float)resolution;
-        float  texel_footprint = max(length(ddx(texel_coords)), length(ddy(texel_coords)));
+        float2 texel_coords = uv_in_frame * (float)resolution;
+#ifdef VISIBILITY_RESOLVE
+        float texel_footprint = max(length(vis_duv_dx * (float)resolution), length(vis_duv_dy * (float)resolution));
+#else
+        float texel_footprint = max(length(ddx(texel_coords)), length(ddy(texel_coords)));
+#endif
 
         uint2 center_texel = min((uint2)texel_coords, resolution - 1u);
         uint center_addr   = frame_base + (center_texel.y * resolution + center_texel.x) * 2u;
@@ -1736,15 +1765,17 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         float3 up;
         impostor_frame_basis(direction, right, up);
 
+        float4 uv_rect    = impostor_frame_bounds(_draw, frame, frames);
+        float2 tight_uv   = lerp(uv_rect.xy, uv_rect.zw, input_uv);
         float card_radius = _draw.impostor_radius;
-        float2 offset       = (input_uv * 2.0f - 1.0f) * card_radius;
+        float2 offset       = (tight_uv * 2.0f - 1.0f) * card_radius;
         float3 card_local   = _draw.impostor_center + right * offset.x + up * offset.y;
         position            = mul(float4(card_local, 1.0f), transform).xyz;
         position_previous   = mul(float4(card_local, 1.0f), transform_previous).xyz;
         vertex.normal       = normalize(mul(direction, cofactor) * orientation);
         float3 card_tangent = mul(right, (float3x3)transform);
         vertex.tangent      = normalize(card_tangent - vertex.normal * dot(card_tangent, vertex.normal));
-        vertex.uv_misc.xy   = float2(frame) + 0.002f + input_uv * 0.996f;
+        vertex.uv_misc.xy   = float2(frame) + 0.002f + tight_uv * 0.996f;
         vertex.uv_misc.z    = -1.0f;
     }
 

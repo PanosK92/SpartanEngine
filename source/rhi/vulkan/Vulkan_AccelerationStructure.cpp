@@ -269,7 +269,7 @@ namespace spartan
         }
 
         // static blas share one growing scratch buffer, per-instance scratch oom'd the gpu, overallocated so the address can be aligned at use
-        const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+        const uint64_t alignment = RHI_Device::Caps().min_acceleration_buffer_offset_alignment;
         uint64_t scratch_size    = max(size_info.buildScratchSize, size_info.updateScratchSize);
         scratch_size             = ((scratch_size + alignment - 1) & ~(alignment - 1)) + alignment;
         usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -591,7 +591,7 @@ namespace spartan
         build_info.geometryCount             = static_cast<uint32_t>(vk_geometries.size());
         build_info.pGeometries               = vk_geometries.data();
         // align scratch device address, the buffer was overallocated to allow this
-        const uint64_t scratch_alignment_refit = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+        const uint64_t scratch_alignment_refit = RHI_Device::Caps().min_acceleration_buffer_offset_alignment;
         VkDeviceAddress scratch_base_refit     = RHI_Device::GetBufferDeviceAddress(m_scratch_buffer);
         build_info.scratchData.deviceAddress   = (scratch_base_refit + scratch_alignment_refit - 1) & ~(scratch_alignment_refit - 1);
 
@@ -690,7 +690,7 @@ namespace spartan
         memcpy(mapped_data, vk_instances.data(), data_size);
     
         // reuse or create instance buffer for current frame
-        const uint64_t alignment = max(static_cast<uint64_t>(16), RHI_Device::PropertyGetMinStorageBufferOffsetAlignment());
+        const uint64_t alignment = max(static_cast<uint64_t>(16), RHI_Device::Caps().min_storage_buffer_offset_alignment);
         const size_t required_instance_size = padded_size + alignment - 1;
         if (!m_instance_buffer[buf_idx] || required_instance_size > m_instance_buffer_size[buf_idx])
         {
@@ -802,7 +802,7 @@ namespace spartan
         m_tlas_refit_count = refit ? m_tlas_refit_count + 1 : 0;
     
         // overallocated by alignment, vma does not guarantee the base satisfies minAccelerationStructureScratchOffsetAlignment
-        const uint64_t scratch_alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+        const uint64_t scratch_alignment = RHI_Device::Caps().min_acceleration_buffer_offset_alignment;
         uint64_t required_scratch_size   = max(size_info.buildScratchSize, size_info.updateScratchSize);
         required_scratch_size            = ((required_scratch_size + scratch_alignment - 1) & ~(scratch_alignment - 1)) + scratch_alignment;
         if (!m_scratch_buffer || required_scratch_size > m_scratch_buffer_size)

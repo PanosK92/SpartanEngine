@@ -77,7 +77,7 @@ Grouped by subsystem. Each cvar's description string, shown in the console and t
 
 ### Renderer: geometry and culling
 
-`r.mesh_shaders`, `r.hiz_occlusion`, `r.hiz_depth_bias`, `r.gpu_lod`, `r.meshlet_cull_skinned`, `r.tessellation_gpu_driven`, `r.shadows_gpu_driven`, `r.foliage_impostors`, `r.tree_wind_cache_entries`.
+`r.visibility_buffer`, `r.mesh_shaders`, `r.hiz_occlusion`, `r.hiz_depth_bias`, `r.gpu_lod`, `r.meshlet_cull_skinned`, `r.tessellation_gpu_driven`, `r.shadows_gpu_driven`, `r.foliage_impostors`, `r.tree_wind_cache_entries`.
 
 ### Renderer: grass and vegetation
 

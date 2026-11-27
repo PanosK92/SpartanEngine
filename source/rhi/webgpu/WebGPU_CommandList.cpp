@@ -11,7 +11,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Pipeline.h"
-#include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Texture.h"
@@ -1282,8 +1281,7 @@ namespace spartan
         }
 
         RHI_Pipeline* pipeline                         = nullptr;
-        RHI_DescriptorSetLayout* descriptor_set_layout = nullptr;
-        RHI_Device::GetOrCreatePipeline(pso, pipeline, descriptor_set_layout);
+        RHI_Device::GetOrCreatePipeline(pso, pipeline);
 
         // the browser finishes pipelines between frames, until then this one isn't there
         webgpu::Pipeline* resource = ready_pipeline(pipeline);
@@ -1780,19 +1778,6 @@ namespace spartan
         Profiler::m_rhi_draw++;
     }
 
-    void RHI_CommandList::draw_indexed_indirect_count(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
-        TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
-
-        static once_flag logged;
-        call_once(logged, []()
-        {
-            SP_LOG_WARNING("Indirect draws with a gpu count aren't supported by the webgpu backend yet");
-        });
-    }
-
     void RHI_CommandList::dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -2026,8 +2011,7 @@ namespace spartan
         pso.Prepare();
 
         RHI_Pipeline* pipeline                         = nullptr;
-        RHI_DescriptorSetLayout* descriptor_set_layout = nullptr;
-        RHI_Device::GetOrCreatePipeline(pso, pipeline, descriptor_set_layout);
+        RHI_Device::GetOrCreatePipeline(pso, pipeline);
         webgpu::Pipeline* resource = ready_pipeline(pipeline);
         if (!resource)
             return;
@@ -2187,24 +2171,6 @@ namespace spartan
 
         m_timestamp_sample->count = 0;
         m_timestamp_sample->ready = true;
-    }
-
-    void RHI_CommandList::begin_occlusion_query(const uint64_t entity_id)
-    {
-    }
-
-    void RHI_CommandList::end_occlusion_query()
-    {
-    }
-
-    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
-    {
-        // visible, so nothing gets culled by a query that never ran
-        return true;
-    }
-
-    void RHI_CommandList::update_occlusion_queries()
-    {
     }
 
     void RHI_CommandList::begin_timeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
@@ -2410,25 +2376,19 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::copy_buffer_to_buffer(void* source, RHI_Buffer* destination, uint64_t size)
+    void RHI_CommandList::copy_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
         SP_ASSERT(source && destination);
         render_pass_end();
 
         State& state = get_state(m_rhi_state);
+        state.touched.insert(source);
         end_compute(state);
-        wgpuCommandEncoderCopyBufferToBuffer(state.encoder, static_cast<WGPUBuffer>(source), 0, static_cast<WGPUBuffer>(destination->GetRhiResource()), 0, size & ~3ull);
+        wgpuCommandEncoderCopyBufferToBuffer(state.encoder, static_cast<WGPUBuffer>(source->GetRhiResource()), 0, static_cast<WGPUBuffer>(destination->GetRhiResource()), 0, size & ~3ull);
         if (destination->GetType() == RHI_Buffer_Type::Readback)
         {
             state.readbacks.push_back(destination);
         }
-    }
-
-    void RHI_CommandList::copy_buffer_to_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
-    {
-        SP_ASSERT(source);
-        get_state(m_rhi_state).touched.insert(source);
-        copy_buffer_to_buffer(source->GetRhiResource(), destination, size);
     }
 
     namespace immediate_execution

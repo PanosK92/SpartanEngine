@@ -24,7 +24,6 @@ namespace spartan
     {
         if (m_rhi_resource)
         {
-            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
             // open command lists may still reference it
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
@@ -51,9 +50,9 @@ namespace spartan
         if (m_type == RHI_Buffer_Type::ShaderBindingTable)
         {
             SP_ASSERT(m_element_count >= 3);
-            const uint32_t handle_size  = RHI_Device::PropertyGetShaderGroupHandleSize();
-            const uint32_t handle_align = RHI_Device::PropertyGetShaderGroupHandleAlignment();
-            const uint64_t base_align   = RHI_Device::PropertyGetShaderGroupBaseAlignment();
+            const uint32_t handle_size  = RHI_Device::Caps().shader_group_handle_size;
+            const uint32_t handle_align = RHI_Device::Caps().shader_group_handle_alignment;
+            const uint64_t base_align   = RHI_Device::Caps().shader_group_base_alignment;
             m_aligned_handle_size       = ((handle_size + handle_align - 1) / handle_align) * handle_align;
             m_raygen_offset             = 0;
             m_miss_offset               = ((m_aligned_handle_size + base_align - 1) / base_align) * base_align;

@@ -58,8 +58,8 @@ namespace spartan
         RHI_CommandList::BeginPass(name);
         {
             RHI_CommandList::SetShader(GetShader(shader_enum));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
 
             if constexpr (!std::is_null_pointer_v<F>)
             {
@@ -109,26 +109,26 @@ namespace spartan
             // cortao prepass, linear depth with a coarse normal packed into every mip in one dispatch
             const uint32_t packed_mip_count = tex_packed->GetMipCount();
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_prepass_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_spd, tex_packed, 0, packed_mip_count);
+            Renderer::BindTexture(Renderer_BindingsUav::tex_spd, tex_packed, 0, packed_mip_count);
             m_pcb_pass_cpu.set(pass_ssao::mip_count, packed_mip_count);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch(tex_packed, GetResolutionScale());
 
             // cortao main pass, this frame's occlusion and bent normal
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_packed);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetStandardTexture(Renderer_StandardTexture::Cortao_bent_normal_lut));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, GetStandardTexture(Renderer_StandardTexture::Cortao_occluder_lut));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_raw);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_packed);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetStandardTexture(Renderer_StandardTexture::Cortao_bent_normal_lut));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3d, GetStandardTexture(Renderer_StandardTexture::Cortao_occluder_lut));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_raw);
             RHI_CommandList::Dispatch(tex_raw, GetResolutionScale());
 
             // temporal accumulation into the history
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_temporal_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_raw);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_history_read);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_meta_read);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_history_write);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_meta_write);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_raw);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_history_read);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_meta_read);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_history_write);
+            Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_meta_write);
             // history resets on the first frame or after rt recreate, a secondary view has none of its own,
             // it only writes the slot the primary overwrites next, so the primary's history survives it
             const bool secondary_view = IsSecondaryViewActive();
@@ -138,9 +138,9 @@ namespace spartan
 
             // cross bilateral denoise of the accumulated result
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_denoise_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_history_write);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_meta_write);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_ssao);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_history_write);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_meta_write);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_ssao);
             RHI_CommandList::Dispatch(tex_ssao, GetResolutionScale());
 
             if (!secondary_view)
@@ -176,8 +176,8 @@ namespace spartan
             SetCommonTextures(eye_layer);
             {
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::depth_of_field_focus_c));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_dof_focus_previous);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_dof_focus);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_dof_focus_previous);
+                Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_dof_focus);
                 RHI_CommandList::Dispatch(1, 1, 1);
             }
             RHI_CommandList::EndPass();
@@ -191,9 +191,9 @@ namespace spartan
             SetCommonTextures(eye_layer);
             {
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::depth_of_field_c));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_dof_focus);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_dof_focus);
                 m_pcb_pass_cpu.set(pass_depth_of_field::aperture, Renderer::GetViewCamera()->GetAperture());
                 RHI_CommandList::Dispatch(tex_out);
             }
@@ -212,22 +212,11 @@ namespace spartan
             SetCommonTextures(eye_layer);
             {
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::motion_blur_c));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
                 // a secondary view never runs the cloud passes, its velocity lives in the gbuffer
-                const bool use_cloud_velocity =
-                    m_pass_state.cloud_history.valid && !IsSecondaryViewActive();
-                RHI_CommandList::SetTexture(
-                    Renderer_BindingsSrv::gbuffer_velocity,
-                    GetRenderTarget(
-                        use_cloud_velocity ?
-                        Renderer_RenderTarget::cloud_velocity :
-                        Renderer_RenderTarget::gbuffer_velocity
-                    ),
-                    rhi_all_mips,
-                    0,
-                    eye_layer
-                );
+                const bool use_cloud_velocity = m_pass_state.cloud_history.valid && !IsSecondaryViewActive();
+                Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(use_cloud_velocity ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
                 // mode 2 enables the radial mask debug view
                 m_pcb_pass_cpu.set(pass_motion_blur::shutter_speed, Renderer::GetViewCamera()->GetShutterSpeed());
                 m_pcb_pass_cpu.set(pass_motion_blur::mode, cvar_motion_blur.GetValue());
@@ -286,7 +275,7 @@ namespace spartan
                     RHI_CommandList::SetShader(GetShader(kernel));
                     RHI_CommandList::SetBuffer("lens_drops", lens_drops);
                     RHI_CommandList::SetBuffer("lens_state", lens_state);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
                     RHI_CommandList::Dispatch((threads + 63) / 64, 1, 1);
                 }
             }
@@ -305,15 +294,15 @@ namespace spartan
                 {
                     m_pcb_pass_cpu.set(pass_blur::vertical, vertical);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, vertical ? lens_scratch : lens_layer);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, vertical ? lens_layer : lens_scratch);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, vertical ? lens_scratch : lens_layer);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, vertical ? lens_layer : lens_scratch);
                     RHI_CommandList::Dispatch(lens_layer);
                 }
             }
             RHI_CommandList::EndPass();
             Pass_Compute("lens_rain_composite", Renderer_Shader::lens_rain_composite_c, tex_in, tex_out, [&]()
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, lens_layer);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, lens_layer);
             });
             swap(tex_in, tex_out);
         }
@@ -452,7 +441,7 @@ namespace spartan
         {
             run_effect("dithering", Renderer_Shader::dithering_c, [&]()
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
             });
         }
     }
@@ -507,8 +496,8 @@ namespace spartan
         RHI_CommandList::BeginMarker("bloom_prefilter");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_prefilter_c), "bloom_prefilter");
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in, input_mip, input_mip_range);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, pyramid, 0, 1);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in, input_mip, input_mip_range);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, pyramid, 0, 1);
             dispatch_mip(0);
         }
         RHI_CommandList::EndMarker();
@@ -521,8 +510,8 @@ namespace spartan
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_downsample_c), "bloom_downsample");
             for (uint32_t mip = 1; mip < mip_count; mip++)
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, pyramid, mip - 1, 1);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, pyramid, mip, 1);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, pyramid, mip - 1, 1);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, pyramid, mip, 1);
                 dispatch_mip(mip);
             }
         }
@@ -536,8 +525,8 @@ namespace spartan
             {
                 // Each thread reads/writes only its own high-resolution texel;
                 // all filtered reads are from the completed, separate lower mip.
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, pyramid, mip, 1);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, pyramid, mip - 1, 1);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, pyramid, mip, 1);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, pyramid, mip - 1, 1);
                 dispatch_mip(mip - 1);
             }
         }
@@ -547,9 +536,9 @@ namespace spartan
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_blend_frame_c), "bloom_composite");
             m_pcb_pass_cpu.set(pass_bloom::intensity, cvar_bloom.GetValue());
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in, input_mip, input_mip_range);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, pyramid, 0, 1);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in, input_mip, input_mip_range);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, pyramid, 0, 1);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
             RHI_CommandList::Dispatch(tex_out);
         }
         RHI_CommandList::EndMarker();
@@ -567,8 +556,8 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_output::force_sdr, force_sdr);
             m_pcb_pass_cpu.set(pass_output::output_linear, output_linear);
             RHI_CommandList::SetTexture("tex_effective_exposure", GetRenderTarget(Renderer_RenderTarget::auto_exposure));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
             RHI_CommandList::Dispatch(tex_out);
         }
         RHI_CommandList::EndPass();
@@ -610,17 +599,9 @@ namespace spartan
         SetCommonTextures(eye_layer);
         {
             RHI_CommandList::SetShader(shader);
-            RHI_CommandList::SetTexture(
-                Renderer_BindingsSrv::gbuffer_velocity,
-                tex_velocity, rhi_all_mips, 0, eye_layer
-            );
-            RHI_CommandList::SetTexture(
-                Renderer_BindingsSrv::tex3,
-                tex_depth_previous, rhi_all_mips, 0, eye_layer
-            );
-            RHI_CommandList::SetTexture(
-                Renderer_BindingsUav::tex,
-                tex_reactivity);
+            Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_velocity, tex_velocity, rhi_all_mips, 0, eye_layer);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_depth_previous, rhi_all_mips, 0, eye_layer);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_reactivity);
             m_pcb_pass_cpu.set(pass_dlss_reactivity::scale, reactivity_scale);
             RHI_CommandList::Dispatch(tex_reactivity, GetResolutionScale());
         }
@@ -676,7 +657,7 @@ namespace spartan
             SetCommonTextures(eye_layer);
             {
                 RHI_CommandList::SetShader(shader_exposure);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, texture);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, texture);
                 m_pcb_pass_cpu.set(pass_upscaler_exposure::inverse, inverse);
                 RHI_CommandList::Dispatch(texture, scale);
             }
@@ -746,37 +727,16 @@ namespace spartan
 
                 SetCommonTextures(eye_layer);
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::taau_c), "taau");
-                RHI_CommandList::SetTexture(
-                    Renderer_BindingsSrv::gbuffer_velocity,
-                    tex_velocity,
-                    rhi_all_mips,
-                    0,
-                    eye_layer
-                );
+                Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_velocity, tex_velocity, rhi_all_mips, 0, eye_layer);
                 m_pcb_pass_cpu.set(pass_taau::reset_history, m_taau_reset_history);
                 m_pcb_pass_cpu.set(pass_taau::write_history, !is_stereo);
                 // stereo still needs a valid descriptor although its shader branch skips this write.
-                RHI_CommandList::SetTexture(
-                    Renderer_BindingsUav::tex2,
-                    GetRenderTarget(Renderer_RenderTarget::frame_output_2));
-
-                RHI_CommandList::SetTexture(
-                    Renderer_BindingsSrv::tex,
-                    tex_history,
-                    rhi_all_mips,
-                    0,
-                    eye_layer
-                );
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_in);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
-                RHI_CommandList::SetTexture(
-                    Renderer_BindingsSrv::tex3,
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous),
-                    rhi_all_mips,
-                    0,
-                    eye_layer
-                );
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+                Renderer::BindTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::frame_output_2));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_history, rhi_all_mips, 0, eye_layer);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_in);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous), rhi_all_mips, 0, eye_layer);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
                 RHI_CommandList::Dispatch(
                     (tex_out->GetWidth() + TAAU_GROUP_X - 1) / TAAU_GROUP_X,
                     (tex_out->GetHeight() + TAAU_GROUP_Y - 1) / TAAU_GROUP_Y,
@@ -842,9 +802,9 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_auto_exposure::adaptation_speed, camera->GetAutoExposureAdaptationSpeed());
             m_pcb_pass_cpu.set(pass_auto_exposure::exposure_compensation, camera->GetAutoExposureCompensation());
 
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_exposure);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_exposure);
             RHI_CommandList::Dispatch(1, 1, 1);
         }
         RHI_CommandList::EndPass();
@@ -867,8 +827,8 @@ namespace spartan
         }
         {
             RHI_CommandList::SetShader(shader_c, "blit");
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
             RHI_CommandList::Dispatch(tex_out);
         }
         if (gpu_timing)
@@ -900,11 +860,11 @@ namespace spartan
             if (mip == 0 && tex_mip_0)
             {
                 const bool per_mip = tex_mip_0->HasPerMipViews();
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_mip_0, per_mip ? 0 : rhi_all_mips, per_mip ? 1 : 0);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_mip_0, per_mip ? 0 : rhi_all_mips, per_mip ? 1 : 0);
             }
             else
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex, mip, 1);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex, mip, 1);
             }
         };
 
@@ -963,7 +923,7 @@ namespace spartan
 
                 RHI_CommandList::SetShader(GetShader(shader_one), "downscale_one_mip");
                 set_source(mip_start);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex, mip_start + 1, 1);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex, mip_start + 1, 1);
                 constexpr uint32_t thread_group = 8;
                 RHI_CommandList::Dispatch(
                     (dst_w + thread_group - 1) / thread_group,
@@ -984,9 +944,9 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_spd::resolution, Vector2(static_cast<float>(width), static_cast<float>(height)));
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::sb_spd, spd_counter);
+            Renderer::BindBuffer(Renderer_BindingsUav::sb_spd, spd_counter);
             set_source(mip_start);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count);
+            Renderer::BindTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count);
             RHI_CommandList::Dispatch(thread_group_x, thread_group_y);
 
             mip_start += output_mip_count;
@@ -1020,8 +980,8 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_blur::vertical, false);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_blur);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_blur);
             RHI_CommandList::Dispatch(thread_group_count_x, thread_group_count_y);
         }
 
@@ -1031,8 +991,8 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_blur::vertical, true);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_blur);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_blur);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range);
             RHI_CommandList::Dispatch(thread_group_count_x, thread_group_count_y);
         }
 
@@ -1767,7 +1727,7 @@ namespace spartan
         // behind geometry, off screen or behind the camera passed straight through the world, trace
         // against the acceleration structure instead whenever one is available
         RHI_AccelerationStructure* tlas_collision = nullptr;
-        if (RHI_Device::IsSupportedRayTracing())
+        if (RHI_Device::Caps().ray_tracing)
         {
             if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
             {
@@ -1833,9 +1793,9 @@ namespace spartan
         constexpr float billboard_cull_distance = 85.0f;
         RHI_CommandList::BeginPass("particle_emit");
         RHI_CommandList::SetShader(shader_emit, "particle_emit");
-        RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
-        RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_counter, buf_counter);
-        RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
+        Renderer::BindBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+        Renderer::BindBuffer(Renderer_BindingsUav::particle_counter, buf_counter);
+        Renderer::BindBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             if (emit_counts[i] == 0 || range_counts[i] == 0 || emitter_distance[i] > billboard_cull_distance)
@@ -1854,16 +1814,16 @@ namespace spartan
         RHI_CommandList::BeginPass("particle_simulate");
         {
             RHI_CommandList::SetShader(shader_simulate, "particle_simulate");
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_counter, buf_counter);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_wake, buf_wake);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+            Renderer::BindBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+            Renderer::BindBuffer(Renderer_BindingsUav::particle_counter, buf_counter);
+            Renderer::BindBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
+            Renderer::BindBuffer(Renderer_BindingsUav::particle_wake, buf_wake);
+            Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+            Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
             if (tlas_collision)
             {
-                RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas_collision);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas_collision);
+                Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             }
             bind_particle_fluid();
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
@@ -1887,8 +1847,8 @@ namespace spartan
             RHI_CommandList::BeginPass("particle_volume_clear");
             {
                 RHI_CommandList::SetShader(shader_volume_clear, "particle_volume_clear");
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                Renderer::BindBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                Renderer::BindBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
                 RHI_CommandList::Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
                 clear_ran = RHI_CommandList::IsPipelineReady();
             }
@@ -1898,10 +1858,10 @@ namespace spartan
             RHI_CommandList::BeginPass("particle_volume_splat");
             {
                 RHI_CommandList::SetShader(shader_volume_splat, "particle_volume_splat");
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                Renderer::BindBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+                Renderer::BindBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
+                Renderer::BindBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                Renderer::BindBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
                 splat_ran = RHI_CommandList::IsPipelineReady();
@@ -1913,10 +1873,10 @@ namespace spartan
                 RHI_CommandList::BeginPass("particle_volume_resolve");
                 {
                     RHI_CommandList::SetShader(shader_volume_resolve, "particle_volume_resolve");
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_volume_write);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_read);
+                    Renderer::BindBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                    Renderer::BindBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex3d, tex_volume_write);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex3d, tex_volume_read);
                     m_pcb_pass_cpu.set(pass_particles_volumetric::reset_history, !use_history);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
@@ -1963,17 +1923,17 @@ namespace spartan
             return;
         }
 
-        auto to_blend_state = [](ParticleBlendMode mode)
+        auto to_blend_mode = [](ParticleBlendMode mode)
         {
             switch (mode)
             {
                 case ParticleBlendMode::Alpha:
-                    return Renderer_BlendState::Alpha;
+                    return RHI_BlendMode::Alpha;
                 case ParticleBlendMode::Premultiplied:
-                    return Renderer_BlendState::Premultiplied;
+                    return RHI_BlendMode::Premultiplied;
                 case ParticleBlendMode::Additive:
                 default:
-                    return Renderer_BlendState::Additive;
+                    return RHI_BlendMode::Additive;
             }
         };
 
@@ -1998,7 +1958,7 @@ namespace spartan
         RHI_CommandList::BeginPass("particle_render");
         {
             bool state_bound                    = false;
-            Renderer_BlendState last_blend      = Renderer_BlendState::Max;
+            RHI_BlendMode last_blend            = RHI_BlendMode::Max;
             RHI_Texture* last_particle_texture  = nullptr;
 
             for (uint32_t i = 0; i < emitter_count; i++)
@@ -2027,7 +1987,7 @@ namespace spartan
                 RHI_Texture* tex_particle   = emitters[i]->GetTexture();
                 bool has_texture            = tex_particle != nullptr;
                 RHI_Texture* bound_texture  = has_texture ? tex_particle : tex_white;
-                Renderer_BlendState blend   = to_blend_state(emitters[i]->GetBlendMode());
+                RHI_BlendMode blend = to_blend_mode(emitters[i]->GetBlendMode());
 
                 if (!state_bound)
                 {
@@ -2043,17 +2003,17 @@ namespace spartan
                     RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
                     RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
                     RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+                    Renderer::BindBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+                    Renderer::BindBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
+                    Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+                    Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+                    Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
 
                     if (tlas_collision)
                     {
-                        RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas_collision);
-                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                        Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas_collision);
+                        Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
                     }
                     RHI_CommandList::SetCullMode(RHI_CullMode::None);
                     state_bound = true;
@@ -2061,12 +2021,12 @@ namespace spartan
 
                 if (blend != last_blend)
                 {
-                    RHI_CommandList::SetBlendState(GetBlendState(blend));
+                    RHI_CommandList::SetBlend(blend);
                     last_blend = blend;
                 }
                 if (bound_texture != last_particle_texture)
                 {
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, bound_texture);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, bound_texture);
                     last_particle_texture = bound_texture;
                 }
 
@@ -2089,17 +2049,17 @@ namespace spartan
                 RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
                 RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
                 RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_render);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_render);
                 if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
                 {
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_reactivity);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_reactivity);
                     m_pass_state.cleared_reactivity = false;
                 }
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, s_particle_frame.tex_volume_write);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex3d, s_particle_frame.tex_volume_write);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+                Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+                Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+                Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
                 bind_particle_fluid();
                 const uint32_t width  = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
                 const uint32_t height = GetScaledDimension(tex_render->GetHeight(), GetResolutionScale());

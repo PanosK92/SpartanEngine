@@ -104,7 +104,7 @@ namespace spartan
     // fsr, xess and dlss have no metal backends, metalfx upscales instead, nrd is a passthrough, see NRD_Dispatch
     void RHI_VendorTechnology::Initialize()
     {
-        if (!RHI_Device::IsSupportedMetalFx())
+        if (!RHI_Device::Caps().metalfx)
         {
             return;
         }
@@ -251,7 +251,7 @@ namespace spartan
 
     float RHI_VendorTechnology::MetalFx_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
     {
-        if (!RHI_Device::IsSupportedMetalFx() || resolution_render.x <= 0.0f || resolution_render.y <= 0.0f)
+        if (!RHI_Device::Caps().metalfx || resolution_render.x <= 0.0f || resolution_render.y <= 0.0f)
         {
             return 0.0f;
         }

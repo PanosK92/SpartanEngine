@@ -200,7 +200,7 @@ namespace spartan
             return false;
             #endif
 
-            if (RHI_Device::IsDeviceLost() || !RHI_Device::IsSupportedBcCompression())
+            if (RHI_Device::IsDeviceLost() || !RHI_Device::Caps().bc_compression)
             {
                 return false;
             }
@@ -358,7 +358,7 @@ namespace spartan
                     return false;
                 }
 
-                RHI_CommandList::CopyBufferToBuffer(pool::staging.get(), pool::input.get(), staging_size);
+                RHI_CommandList::CopyBuffer(pool::staging.get(), pool::input.get(), staging_size);
                 RHI_CommandList::PrepareBufferForCompute(pool::input.get());
 
                 RHI_PipelineState pso;
@@ -366,8 +366,7 @@ namespace spartan
                 pso.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)] = shader;
                 pso.Prepare();
                 RHI_Pipeline* pipeline = nullptr;
-                RHI_DescriptorSetLayout* layout = nullptr;
-                RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+                RHI_Device::GetOrCreatePipeline(pso, pipeline);
             #if !defined(__EMSCRIPTEN__)
             // native builds wait inline if needed
             #endif
@@ -378,13 +377,13 @@ namespace spartan
                     Breadcrumbs::EndMarker(); // compress_gpu
                     return false;
                 }
-                RHI_CommandList::SetPipelineState(pso);
+                RHI_CommandList::SetShader(shader, pso_name);
 
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::compress_input, pool::input.get());
+                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::compress_input), pool::input.get());
                 const bool is_bc1 = target_format == RHI_Format::BC1_Unorm;
-                const Renderer_BindingsUav output_binding = is_bc1 ? Renderer_BindingsUav::compress_output_bc1 : Renderer_BindingsUav::compress_output;
+                const uint32_t output_slot = static_cast<uint32_t>(is_bc1 ? Renderer_BindingsUav::compress_output_bc1 : Renderer_BindingsUav::compress_output);
                 RHI_Buffer* output_buffer = is_bc1 ? pool::output_bc1.get() : pool::output.get();
-                RHI_CommandList::SetBuffer(output_binding, output_buffer);
+                RHI_CommandList::SetBuffer(output_slot, output_buffer);
 
                 // dispatch from smallest to largest mip so the shader pipeline is warm by the
                 // time the heaviest dispatch runs
@@ -414,7 +413,7 @@ namespace spartan
                 RHI_CommandList::PrepareBufferForReadback(output_buffer);
 
                 uint64_t copy_size = static_cast<uint64_t>(total_blocks) * output_element_size;
-                RHI_CommandList::CopyBufferToBuffer(output_buffer, pool::readback.get(), copy_size);
+                RHI_CommandList::CopyBuffer(output_buffer, pool::readback.get(), copy_size);
 
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }
@@ -848,7 +847,7 @@ namespace spartan
             m_source_mips_key = 0;
 
             bool loaded_compressed_cache = false;
-            if ((m_flags & RHI_Texture_Compress) && RHI_Device::IsSupportedBcCompression() && !World::GetResourceDirectory().empty())
+            if ((m_flags & RHI_Texture_Compress) && RHI_Device::Caps().bc_compression && !World::GetResourceDirectory().empty())
             {
                 const RHI_Format requested_target =
                     m_compression_format != RHI_Format::Max
@@ -1236,7 +1235,7 @@ namespace spartan
         bool restored_mips = false;
         RHI_Format target = m_compression_format != RHI_Format::Max ? m_compression_format : RHI_Format::BC3_Unorm;
         if (is_not_compressed && is_material_texture && (m_flags & RHI_Texture_Compress) &&
-            RHI_Device::IsSupportedBcCompression() &&
+            RHI_Device::Caps().bc_compression &&
             m_type == RHI_Texture_Type::Type2D && m_depth == 1 && m_slices.size() == 1 &&
             m_slices[0].mips.size() == 1 && m_format == RHI_Format::R8G8B8A8_Unorm &&
             !World::GetResourceDirectory().empty())
@@ -1308,7 +1307,7 @@ namespace spartan
             Breadcrumbs::EndMarker(); // mip_generation
 
             // compress - format is chosen per-texture (bc3 for packed, bc1 for color, bc5 for normal, etc.)
-            bool compress       = (m_flags & RHI_Texture_Compress) && RHI_Device::IsSupportedBcCompression();
+            bool compress       = (m_flags & RHI_Texture_Compress) && RHI_Device::Caps().bc_compression;
             bool not_compressed = !IsCompressedFormat();
             if (compress && not_compressed)
             {

@@ -726,14 +726,16 @@ namespace spartan
         pso.SetDepthTarget(target.get());
         pso.Prepare();
         RHI_Pipeline* pipeline = nullptr;
-        RHI_DescriptorSetLayout* layout = nullptr;
-        RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+        RHI_Device::GetOrCreatePipeline(pso, pipeline);
         const uint32_t count = RHI_Device::GetPipelineCount();
-        RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+        RHI_Device::GetOrCreatePipeline(pso, pipeline);
         const bool pending = !pipeline && count == RHI_Device::GetPipelineCount();
         if (RHI_CommandList* cmd = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
-            RHI_CommandList::SetPipelineState(pso);
+            RHI_CommandList::SetPassName("smoke_async_pipeline");
+            RHI_CommandList::SetUseStandardResources(false);
+            RHI_CommandList::SetShader(shader.get());
+            RHI_CommandList::SetDepthTarget(target.get());
             RHI_CommandList::Draw(3);
             RHI_CommandList::ImmediateExecutionEnd(cmd);
         }
@@ -742,7 +744,7 @@ namespace spartan
         target.reset();
         release.set_value();
         RHI_Compiler::Pipelines().Flush();
-        RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+        RHI_Device::GetOrCreatePipeline(pso, pipeline);
         if (!pending || !pipeline || !pipeline->GetRhiResource())
         {
             out_error = "Async pipeline did not transition from a deduplicated pending entry to ready";
@@ -855,31 +857,26 @@ namespace spartan
 
     bool SmokeTest::Test_Renderer_PipelineStates(std::string& out_error)
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_RasterizerState::Max); ++i)
+        if (rhi_rasterizer_desc(RHI_RasterizerMode::Wireframe).polygon_mode != RHI_PolygonMode::Wireframe ||
+            rhi_rasterizer_desc(RHI_RasterizerMode::SolidNoDepthClip).depth_clip != false)
         {
-            if (!Renderer::GetRasterizerState(static_cast<Renderer_RasterizerState>(i)))
-            {
-                out_error = "Missing Rasterizer State at index " + std::to_string(i);
-                return false;
-            }
+            out_error = "Invalid RHI rasterizer mode descriptor";
+            return false;
         }
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_DepthStencilState::Max); ++i)
+        if (!rhi_depth_desc(RHI_DepthMode::ReadWrite).write_enabled ||
+            rhi_depth_desc(RHI_DepthMode::Off).test_enabled)
         {
-            if (!Renderer::GetDepthStencilState(static_cast<Renderer_DepthStencilState>(i)))
-            {
-                out_error = "Missing Depth Stencil State at index " + std::to_string(i);
-                return false;
-            }
+            out_error = "Invalid RHI depth mode descriptor";
+            return false;
         }
 
-        for (uint32_t i = 0; i < 3; ++i)
+        if (rhi_blend_desc(RHI_BlendMode::Off).enabled ||
+            !rhi_blend_desc(RHI_BlendMode::Alpha).enabled ||
+            !rhi_blend_desc(RHI_BlendMode::Ui).enabled)
         {
-            if (!Renderer::GetBlendState(static_cast<Renderer_BlendState>(i)))
-            {
-                out_error = "Missing Blend State at index " + std::to_string(i);
-                return false;
-            }
+            out_error = "Invalid RHI blend mode descriptor";
+            return false;
         }
 
         return true;

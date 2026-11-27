@@ -683,7 +683,7 @@ namespace spartan
     void RHI_Texture::RHI_DestroyResource()
     {
         // evict cached descriptor sets keyed by this texture pointer
-        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+        // nothing to invalidate on d3d12 (no descriptor set cache)
 
         // defer release, open command lists may still reference this resource
         if (m_rhi_resource)

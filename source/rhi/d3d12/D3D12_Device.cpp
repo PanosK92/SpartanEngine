@@ -10,7 +10,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Compiler.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
-#include "../RHI_DescriptorSet.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_Texture.h"
@@ -729,19 +728,19 @@ namespace spartan
     void RHI_Device::Initialize()
     {
         // detect device limits, the rt and vrs caps below are queried from the d3d12 device
-        m_max_texture_2d_dimension   = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-        m_max_push_constant_size     = 256;
+        m_caps.max_texture_2d_dimension   = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+        m_caps.max_push_constant_size     = 256;
 
         // alignment requirements, fixed by the d3d12 spec
-        m_min_uniform_buffer_offset_alignment      = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;       // 256
-        m_min_storage_buffer_offset_alignment      = 16;                                                  // structured buffers, conservative
-        m_min_acceleration_buffer_offset_alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT; // 256
-        m_optimal_buffer_copy_offset_alignment     = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;              // 512
+        m_caps.min_uniform_buffer_offset_alignment      = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;       // 256
+        m_caps.min_storage_buffer_offset_alignment      = 16;                                                  // structured buffers, conservative
+        m_caps.min_acceleration_buffer_offset_alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT; // 256
+        m_caps.optimal_buffer_copy_offset_alignment     = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;              // 512
 
         // dxr shader binding table sizes, fixed by the d3d12 spec
-        m_shader_group_handle_size      = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;            // 32
-        m_shader_group_handle_alignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;    // 32
-        m_shader_group_base_alignment   = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;     // 64
+        m_caps.shader_group_handle_size      = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;            // 32
+        m_caps.shader_group_handle_alignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;    // 32
+        m_caps.shader_group_base_alignment   = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;     // 64
 
         UINT dxgi_factory_flags = 0;
         if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
@@ -817,8 +816,8 @@ namespace spartan
             D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
             if (SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5))))
             {
-                m_is_ray_tracing_supported = (options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
-                if (m_is_ray_tracing_supported)
+                m_caps.ray_tracing = (options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
+                if (m_caps.ray_tracing)
                 {
                     SP_LOG_INFO("DXR raytracing tier %d supported", static_cast<int>(options5.RaytracingTier));
                 }
@@ -828,10 +827,10 @@ namespace spartan
             if (SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6))))
             {
                 // tier 2 supports per-image vrs (RSSetShadingRateImage), tier 1 only per-draw, we need image vrs for parity
-                m_is_shading_rate_supported       = (options6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2);
-                m_max_shading_rate_texel_size_x   = options6.ShadingRateImageTileSize;
-                m_max_shading_rate_texel_size_y   = options6.ShadingRateImageTileSize;
-                if (m_is_shading_rate_supported)
+                m_caps.vrs                           = (options6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2);
+                m_caps.max_shading_rate_texel_size_x = options6.ShadingRateImageTileSize;
+                m_caps.max_shading_rate_texel_size_y = options6.ShadingRateImageTileSize;
+                if (m_caps.vrs)
                 {
                     SP_LOG_INFO("Variable rate shading tier %d supported (tile size %u)", static_cast<int>(options6.VariableShadingRateTier), options6.ShadingRateImageTileSize);
                 }
@@ -839,14 +838,14 @@ namespace spartan
 
             // SV_StartInstanceLocation evaluates to 0 under ExecuteIndirect even when D3D12_OPTIONS21::ExtendedCommandInfoSupported
             // reports true, which breaks indirect shadow-map draw indexing; keep base-instance batching disabled on D3D12
-            m_is_shader_base_instance_supported = false;
+            m_caps.shader_base_instance = false;
 
             // xess requires shader model 6.4 or newer
-            m_xess_supported = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;
-            m_dlss_supported = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
+            m_caps.xess = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;
+            m_caps.dlss = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
 
-            m_is_mesh_shaders_supported = (caps::mesh_shader_tier >= D3D12_MESH_SHADER_TIER_1);
-            if (m_is_mesh_shaders_supported)
+            m_caps.mesh_shaders = (caps::mesh_shader_tier >= D3D12_MESH_SHADER_TIER_1);
+            if (m_caps.mesh_shaders)
             {
                 SP_LOG_INFO("D3D12 mesh shader tier %d supported", static_cast<int>(caps::mesh_shader_tier));
             }
@@ -887,7 +886,7 @@ namespace spartan
             UINT64 ticks_per_second = 0;
             if (SUCCEEDED(queues::graphics->GetTimestampFrequency(&ticks_per_second)) && ticks_per_second > 0)
             {
-                m_timestamp_period = 1e9f / static_cast<float>(ticks_per_second);
+                m_caps.timestamp_period = 1e9f / static_cast<float>(ticks_per_second);
             }
         }
 
@@ -2052,19 +2051,17 @@ namespace spartan
         staging::free_bytes = 0;
     }
 
-    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
+    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline)
     {
         SP_ASSERT(pso.GetHash() != 0);
 
         lock_guard<mutex> lock(descriptors::pipeline_mutex);
 
-        descriptor_set_layout = nullptr;
-
         uint64_t hash = pso.GetHash();
         auto it = descriptors::pipelines.find(hash);
         if (it == descriptors::pipelines.end())
         {
-            it = descriptors::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
+            it = descriptors::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso))).first;
         }
 
         pipeline = it->second->IsReady() && it->second->GetRhiResource() ? it->second.get() : nullptr;
@@ -2175,7 +2172,7 @@ namespace spartan
 
     void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)
     {
-        if (!m_is_shading_rate_supported || !cmd_list)
+        if (!m_caps.vrs || !cmd_list)
         {
             return;
         }
@@ -2228,47 +2225,6 @@ namespace spartan
             case RHI_Descriptor_Type::StructuredBuffer:      return 2; // SRV table space0 (structured buffers are SRVs)
             case RHI_Descriptor_Type::AccelerationStructure: return 2; // SRV table space0 (tlas srv)
             default:                                         return 0;
-        }
-    }
-
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
-    {
-        // d3d12 doesn't use this api
-    }
-
-    unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
-    {
-        static unordered_map<uint64_t, RHI_DescriptorSet> descriptors;
-        return descriptors;
-    }
-
-    mutex& RHI_Device::GetDescriptorSetMutex()
-    {
-        static mutex descriptor_mutex;
-        return descriptor_mutex;
-    }
-
-    uint64_t RHI_Device::GetDescriptorSetFrame() { return 0; }
-
-    void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
-    {
-        if (!resource)
-        {
-            return;
-        }
-
-        lock_guard<mutex> lock(GetDescriptorSetMutex());
-        unordered_map<uint64_t, RHI_DescriptorSet>& sets = GetDescriptorSets();
-        for (auto it = sets.begin(); it != sets.end();)
-        {
-            if (it->second.IsReferingToResource(resource))
-            {
-                it = sets.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
         }
     }
 

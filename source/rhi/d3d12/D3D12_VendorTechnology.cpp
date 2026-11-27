@@ -207,7 +207,7 @@ namespace spartan
 
         void context_create()
         {
-            if (!RHI_Device::IsSupportedXess() || create_failed)
+            if (!RHI_Device::Caps().xess || create_failed)
             {
                 return;
             }
@@ -328,7 +328,7 @@ namespace spartan
 
         void sdk_init()
         {
-            if (!RHI_Device::IsSupportedDlss() || sdk_ready)
+            if (!RHI_Device::Caps().dlss || sdk_ready)
             {
                 return;
             }

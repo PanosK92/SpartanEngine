@@ -11,7 +11,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Queue.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
-#include "../RHI_DescriptorSet.h"
 #include "../RHI_Compiler.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_Texture.h"
@@ -1137,26 +1136,26 @@ namespace spartan
         native_queue = wgpuDeviceGetQueue(RHI_Context::device);
 
         // limits
-        m_max_texture_2d_dimension                 = limits.maxTextureDimension2D;
-        m_max_push_constant_size                   = webgpu::push_constants_size;
-        m_min_uniform_buffer_offset_alignment      = limits.minUniformBufferOffsetAlignment;
-        m_min_storage_buffer_offset_alignment      = limits.minStorageBufferOffsetAlignment;
-        m_min_acceleration_buffer_offset_alignment = 256;
-        m_optimal_buffer_copy_offset_alignment     = 256;
-        m_shader_group_handle_size                 = 32;
-        m_shader_group_handle_alignment            = 32;
-        m_shader_group_base_alignment              = 64;
-        m_timestamp_period                         = 1.0f;
+        m_caps.max_texture_2d_dimension                 = limits.maxTextureDimension2D;
+        m_caps.max_push_constant_size                   = webgpu::push_constants_size;
+        m_caps.min_uniform_buffer_offset_alignment      = limits.minUniformBufferOffsetAlignment;
+        m_caps.min_storage_buffer_offset_alignment      = limits.minStorageBufferOffsetAlignment;
+        m_caps.min_acceleration_buffer_offset_alignment = 256;
+        m_caps.optimal_buffer_copy_offset_alignment     = 256;
+        m_caps.shader_group_handle_size                 = 32;
+        m_caps.shader_group_handle_alignment            = 32;
+        m_caps.shader_group_base_alignment              = 64;
+        m_caps.timestamp_period                         = 1.0f;
 
         // webgpu has neither ray tracing, mesh shaders, hull and domain stages nor shading rate images
-        m_is_ray_tracing_supported          = false;
-        m_is_mesh_shaders_supported         = false;
-        m_is_tessellation_supported         = false;
-        m_is_shading_rate_supported         = false;
-        m_is_shader_base_instance_supported = false;
-        m_is_bc_compression_supported       = webgpu::has_feature(WGPUFeatureName_TextureCompressionBC);
-        m_xess_supported                    = false;
-        m_dlss_supported                    = false;
+        m_caps.ray_tracing          = false;
+        m_caps.mesh_shaders         = false;
+        m_caps.tessellation         = false;
+        m_caps.vrs                  = false;
+        m_caps.shader_base_instance = false;
+        m_caps.bc_compression       = webgpu::has_feature(WGPUFeatureName_TextureCompressionBC);
+        m_caps.xess                 = false;
+        m_caps.dlss                 = false;
 
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
@@ -1398,17 +1397,16 @@ namespace spartan
         staging::pool.clear();
     }
 
-    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
+    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline)
     {
         SP_ASSERT(pso.GetHash() != 0);
         lock_guard<mutex> lock(pipelines::mutex_cache);
 
-        descriptor_set_layout = nullptr;
         uint64_t hash         = pso.GetHash();
         auto it               = pipelines::cache.find(hash);
         if (it == pipelines::cache.end())
         {
-            it = pipelines::cache.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
+            it = pipelines::cache.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso))).first;
         }
 
         // the browser creates the wgpu pipeline asynchronously, a pipeline that can't record yet would silently skip its dispatches
@@ -1495,32 +1493,6 @@ namespace spartan
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
     {
         return 0;
-    }
-
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
-    {
-        // bind groups are created per draw, there are no persistent descriptor sets
-    }
-
-    unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
-    {
-        static unordered_map<uint64_t, RHI_DescriptorSet> descriptors;
-        return descriptors;
-    }
-
-    mutex& RHI_Device::GetDescriptorSetMutex()
-    {
-        static mutex descriptor_mutex;
-        return descriptor_mutex;
-    }
-
-    uint64_t RHI_Device::GetDescriptorSetFrame()
-    {
-        return 0;
-    }
-
-    void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
-    {
     }
 
     uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)

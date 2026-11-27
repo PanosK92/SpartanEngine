@@ -155,7 +155,7 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 
 - **Zero-binding draw path**: all per-draw data lives in a single bindless storage buffer, push constants carry only an index
 - **Single global vertex and index buffer** for all geometry (inspired by id Tech), with **vertex pulling** that bypasses the Input Assembler and is shared by rasterization and ray tracing
-- **GPU-driven indirect rendering** with per-meshlet frustum, Hi-Z occlusion and backface cone culling; the CPU issues a single `DrawIndexedIndirectCount` per pass
+- **GPU-driven visibility buffer**: two-phase Hi-Z occlusion culling (frustum, Hi-Z, backface cones) feeds a single mesh-shader visibility pass writing depth + 32-bit triangle/impostor IDs, followed by 8×8 tile classification and specialized indirect compute material resolve (opaque, alpha-tested, impostor) with analytic derivatives and zero 2×2 quad overshading
 - **Virtualized geometry** organizes meshes into a hierarchy of clusters built with meshoptimizer. The renderer streams geometry in pages and selects detail based on how large each region appears on screen. Mesh shaders and vertex pulling are both supported.
 - **Bindless everything**: materials, lights, samplers, uber shaders, minimal PSO permutations
 - **Universal HLSL** compiled for Vulkan (SPIR-V), DirectX 12, Metal (Metal Shader Converter) and WebGPU (SPIR-V to WGSL through Tint)

@@ -11,9 +11,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
-#include "../RHI_RasterizerState.h"
-#include "../RHI_BlendState.h"
-#include "../RHI_DepthStencilState.h"
 #include "Metal_Internal.h"
 //=================================
 
@@ -96,28 +93,15 @@ namespace spartan
             return descriptor;
         }
 
-        MTL::DepthStencilState* create_depth_stencil_state(const RHI_DepthStencilState* state)
+        MTL::DepthStencilState* create_depth_stencil_state(const RHI_DepthMode mode)
         {
+            const RHI_DepthDesc depth               = rhi_depth_desc(mode);
             MTL::DepthStencilDescriptor* descriptor = MTL::DepthStencilDescriptor::alloc()->init();
-            if (state && state->GetDepthTestEnabled())
+            if (depth.test_enabled)
             {
-                descriptor->setDepthCompareFunction(metal_comparison_function[static_cast<uint32_t>(state->GetDepthComparisonFunction())]);
+                descriptor->setDepthCompareFunction(metal_comparison_function[static_cast<uint32_t>(depth.compare)]);
             }
-            descriptor->setDepthWriteEnabled(state && state->GetDepthWriteEnabled());
-
-            if (state && (state->GetStencilTestEnabled() || state->GetStencilWriteEnabled()))
-            {
-                MTL::StencilDescriptor* stencil = MTL::StencilDescriptor::alloc()->init();
-                stencil->setStencilCompareFunction(metal_comparison_function[static_cast<uint32_t>(state->GetStencilComparisonFunction())]);
-                stencil->setStencilFailureOperation(metal_stencil_operation[static_cast<uint32_t>(state->GetStencilFailOperation())]);
-                stencil->setDepthFailureOperation(metal_stencil_operation[static_cast<uint32_t>(state->GetStencilDepthFailOperation())]);
-                stencil->setDepthStencilPassOperation(metal_stencil_operation[static_cast<uint32_t>(state->GetStencilPassOperation())]);
-                stencil->setReadMask(state->GetStencilReadMask());
-                stencil->setWriteMask(state->GetStencilWriteMask());
-                descriptor->setFrontFaceStencil(stencil);
-                descriptor->setBackFaceStencil(stencil);
-                stencil->release();
-            }
+            descriptor->setDepthWriteEnabled(depth.write_enabled);
 
             MTL::DepthStencilState* depth_stencil_state = RHI_Context::device->newDepthStencilState(descriptor);
             descriptor->release();
@@ -155,21 +139,21 @@ namespace spartan
         void set_attachments(T* descriptor, const RHI_PipelineState& state)
         {
             const MTL::ColorWriteMask write_mask = is_imgui(state) ? MTL::ColorWriteMaskRed | MTL::ColorWriteMaskGreen | MTL::ColorWriteMaskBlue : MTL::ColorWriteMaskAll;
-            const RHI_BlendState* blend          = state.blend_state;
+            const RHI_BlendDesc blend            = rhi_blend_desc(state.blend_mode);
             auto set_color_attachment            = [&](const uint32_t index, const MTL::PixelFormat format)
             {
                 MTL::RenderPipelineColorAttachmentDescriptor* attachment = descriptor->colorAttachments()->object(index);
                 attachment->setPixelFormat(format);
                 attachment->setWriteMask(write_mask);
-                if (blend && blend->GetBlendEnabled())
+                if (blend.enabled)
                 {
                     attachment->setBlendingEnabled(true);
-                    attachment->setSourceRGBBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend->GetSourceBlend())]);
-                    attachment->setDestinationRGBBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend->GetDestBlend())]);
-                    attachment->setRgbBlendOperation(metal_blend_operation[static_cast<uint32_t>(blend->GetBlendOp())]);
-                    attachment->setSourceAlphaBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend->GetSourceBlendAlpha())]);
-                    attachment->setDestinationAlphaBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend->GetDestBlendAlpha())]);
-                    attachment->setAlphaBlendOperation(metal_blend_operation[static_cast<uint32_t>(blend->GetBlendOpAlpha())]);
+                    attachment->setSourceRGBBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend.src_color)]);
+                    attachment->setDestinationRGBBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend.dst_color)]);
+                    attachment->setRgbBlendOperation(metal_blend_operation[static_cast<uint32_t>(blend.op_color)]);
+                    attachment->setSourceAlphaBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend.src_alpha)]);
+                    attachment->setDestinationAlphaBlendFactor(metal_blend_factor[static_cast<uint32_t>(blend.dst_alpha)]);
+                    attachment->setAlphaBlendOperation(metal_blend_operation[static_cast<uint32_t>(blend.op_alpha)]);
                 }
             };
 
@@ -263,7 +247,7 @@ namespace spartan
                 return nullptr;
             }
 
-            pipeline->depth_stencil  = create_depth_stencil_state(state.depth_stencil_state);
+            pipeline->depth_stencil  = create_depth_stencil_state(state.depth_mode);
             pipeline->primitive_type = metal_primitive_topology[static_cast<uint32_t>(state.primitive_topology)];
             pipeline->cull_none      = is_imgui(state);
             if (is_mesh)
@@ -271,14 +255,12 @@ namespace spartan
                 pipeline->threadgroup_size = get_shader(state, RHI_Shader_Type::MeshShader)->threadgroup_size;
             }
 
-            if (const RHI_RasterizerState* rasterizer = state.rasterizer_state)
-            {
-                pipeline->fill_mode        = metal_polygon_mode[static_cast<uint32_t>(rasterizer->GetPolygonMode())];
-                pipeline->depth_clip_mode  = rasterizer->GetDepthClipEnabled() ? MTL::DepthClipModeClip : MTL::DepthClipModeClamp;
-                pipeline->depth_bias       = rasterizer->GetDepthBias();
-                pipeline->depth_bias_slope = rasterizer->GetDepthBiasSlopeScaled();
-                pipeline->depth_bias_clamp = rasterizer->GetDepthBiasClamp();
-            }
+            const RHI_RasterizerDesc rasterizer = rhi_rasterizer_desc(state.rasterizer_mode);
+            pipeline->fill_mode                 = metal_polygon_mode[static_cast<uint32_t>(rasterizer.polygon_mode)];
+            pipeline->depth_clip_mode           = rasterizer.depth_clip ? MTL::DepthClipModeClip : MTL::DepthClipModeClamp;
+            pipeline->depth_bias                = 0.0f;
+            pipeline->depth_bias_slope          = 0.0f;
+            pipeline->depth_bias_clamp          = 0.0f;
 
             return pipeline;
         }

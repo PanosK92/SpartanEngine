@@ -966,9 +966,6 @@ namespace spartan
 
         CreateBuffers();
         RHI_Device::SetDummyVertexBuffer(GetBuffer(Renderer_Buffer::DummyInstance));
-        CreateDepthStencilStates();
-        CreateRasterizerStates();
-        CreateBlendStates();
         CreateRenderTargets(true, true, true);
         CreateSamplers();
         Engine::LogStartupStep("renderer: targets and states");
@@ -2234,7 +2231,7 @@ namespace spartan
         SetCommonTextures();
         {
             RHI_CommandList::SetShader(shader_c);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
             m_pcb_pass_cpu.set(pass_preview_studio::backdrop_tint, tint);
             m_pcb_pass_cpu.set(pass_preview_studio::replace_sky, replace_sky);
             m_pcb_pass_cpu.set(pass_preview_studio::wire_mode, wire_mode);
@@ -2751,12 +2748,12 @@ namespace spartan
         // bit positions are shader abi, must match common_resources.hlsl
         // a secondary view is absent from the tlas, so every ray traced feature is off for it
         const bool ray_tracing_allowed = !secondary_render_root_active;
-        const bool tlas_available      = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr && ray_tracing_allowed;
+        const bool tlas_available      = RHI_Device::Caps().ray_tracing && GetTopLevelAccelerationStructure() != nullptr && ray_tracing_allowed;
 
         // Initial preparation needs a TLAS before enabling tracing. Once one exists,
         // spawning geometry must not switch lighting modes for the entire scene.
         bool pending_blas = frame_is_loading;
-        if (ray_tracing_allowed && RHI_Device::IsSupportedRayTracing() && (!frame_is_loading || tlas_available))
+        if (ray_tracing_allowed && RHI_Device::Caps().ray_tracing && (!frame_is_loading || tlas_available))
         {
             prepare_ray_tracing_renders();
             pending_blas = ray_tracing_pending_blas;
@@ -5916,7 +5913,7 @@ namespace spartan
             return;
         }
 
-        if (!RHI_Device::IsSupportedRayTracing() || !RHI_Device::IsRecording())
+        if (!RHI_Device::Caps().ray_tracing || !RHI_Device::IsRecording())
         {
             SP_LOG_WARNING("Ray tracing or command list invalid, skipping update");
             return;
@@ -7088,9 +7085,9 @@ namespace spartan
         RHI_CommandList::BeginMarker("screenshot_xr");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::xr_mirror_c), "screenshot_xr");
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_sdr);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_sdr);
             m_pcb_pass_cpu.set(pass_xr_mirror::display_size, Vector2(static_cast<float>(tex_sdr->GetWidth()), static_cast<float>(tex_sdr->GetHeight())));
             m_pcb_pass_cpu.set(pass_xr_mirror::encode_srgb, true);
             RHI_CommandList::Dispatch(tex_sdr);
@@ -7126,9 +7123,9 @@ namespace spartan
         RHI_CommandList::BeginPass("xr_mirror");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::xr_mirror_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_output);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_output);
             m_pcb_pass_cpu.set(pass_xr_mirror::display_size, display_size);
             m_pcb_pass_cpu.set(pass_xr_mirror::encode_srgb, false);
             RHI_CommandList::Dispatch(tex_output);
@@ -7335,12 +7332,12 @@ namespace spartan
         {
             return;
         }
-        RHI_CommandList::SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
+        Renderer::BindConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
         RHI_CommandList::SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
         RHI_Texture* tex_ies = ies::get_atlas();
         RHI_CommandList::SetTexture("tex_ies", tex_ies && tex_ies->GetRhiSrv() ? tex_ies : GetStandardTexture(Renderer_StandardTexture::Black));
-        RHI_CommandList::SetBuffer(Renderer_BindingsUav::decals, GetBuffer(Renderer_Buffer::Decals));
-        RHI_CommandList::SetBuffer(Renderer_BindingsUav::rain_occlusion, GetBuffer(Renderer_Buffer::RainOcclusion));
+        Renderer::BindBuffer(Renderer_BindingsUav::decals, GetBuffer(Renderer_Buffer::Decals));
+        Renderer::BindBuffer(Renderer_BindingsUav::rain_occlusion, GetBuffer(Renderer_Buffer::RainOcclusion));
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
         if (tex_exposure)
@@ -7498,8 +7495,8 @@ namespace spartan
         RHI_CommandList::BeginPass("variable_rate_shading");
         {
             RHI_CommandList::SetShader(shader_c);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
+            Renderer::BindTexture(Renderer_BindingsUav::tex_uint, tex_out);
             RHI_CommandList::Dispatch(tex_out);
         }
         RHI_CommandList::EndPass();
@@ -7566,7 +7563,7 @@ namespace spartan
     {
         // Keep the visible primary guides, including transparent surfaces, for replay.
         const bool async_wanted = cvar_restir_pt_async.GetValueAs<bool>() && RHI_Device::IsAsyncComputeConcurrent();
-        if (secondary_render_root_active || IsStereoView() || Window::IsMinimized() || !cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
+        if (secondary_render_root_active || IsStereoView() || Window::IsMinimized() || !cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::Caps().ray_tracing)
         {
             m_pass_state.restir.gbuffer_copy_frames = 0;
             return false;
@@ -7772,7 +7769,7 @@ namespace spartan
 
     bool Renderer::IsPathTracingActive()
     {
-        return cvar_path_tracing.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing() &&
+        return cvar_path_tracing.GetValueAs<bool>() && RHI_Device::Caps().ray_tracing &&
             !secondary_render_root_active && !IsStereoView();
     }
 
@@ -7885,18 +7882,18 @@ namespace spartan
                 m_pcb_pass_cpu.set(pass_path_tracing::write_guides, !denoiser.preview_valid);
                 if (history.phase == 0)
                     denoiser.complete_guides = true;
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, denoiser.normal.get());
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, denoiser.depth.get());
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, denoiser.input.get());
+                Renderer::BindTexture(Renderer_BindingsUav::tex2, denoiser.normal.get());
+                Renderer::BindTexture(Renderer_BindingsUav::tex3, denoiser.depth.get());
+                Renderer::BindTexture(Renderer_BindingsUav::tex4, denoiser.input.get());
             }
             if (has_scene)
             {
-                RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, m_tlas.get());
+                Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, m_tlas.get());
                 GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             }
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, target);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, target);
             m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
             m_pcb_pass_cpu.set(pass_path_tracing::bounces, bounces);
             m_pcb_pass_cpu.set(pass_path_tracing::stride, stride);
@@ -7921,11 +7918,11 @@ namespace spartan
                     if (denoiser.preview_valid)
                     {
                         RHI_CommandList::SetShader(resolve_shader);
-                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, target);
-                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, denoiser.depth.get());
-                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, denoiser.output.get());
-                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, denoiser.diffuse.get());
-                        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, denoiser.preview.get());
+                        Renderer::BindTexture(Renderer_BindingsSrv::tex, target);
+                        Renderer::BindTexture(Renderer_BindingsSrv::tex2, denoiser.depth.get());
+                        Renderer::BindTexture(Renderer_BindingsSrv::tex3, denoiser.output.get());
+                        Renderer::BindTexture(Renderer_BindingsSrv::tex4, denoiser.diffuse.get());
+                        Renderer::BindTexture(Renderer_BindingsUav::tex, denoiser.preview.get());
                         m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
                         RHI_CommandList::Dispatch(denoiser.preview.get());
                         denoiser.preview_valid = RHI_CommandList::IsPipelineReady();

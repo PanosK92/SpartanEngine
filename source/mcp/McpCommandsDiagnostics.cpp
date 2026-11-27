@@ -236,7 +236,7 @@ namespace spartan::mcp_diagnostics
             if (get_argument(request, "breakdown") && !RHI_Device::IsRecording())
             {
                 RHI_Buffer readback(RHI_Buffer_Type::Readback, sizeof(Sb_MeshletInstance), meshlet_list->GetElementCount(), nullptr, true, "meshlet_diagnostic");
-                RHI_CommandList::CopyBufferContents(meshlet_list, &readback, meshlet_list->GetObjectSize());
+                RHI_CommandList::CopyBuffer(meshlet_list, &readback, meshlet_list->GetObjectSize());
                 RHI_Device::QueueWaitAll();
                 const auto* entries = static_cast<const Sb_MeshletInstance*>(readback.GetMappedData());
                 std::unordered_map<std::string, uint32_t> counts;

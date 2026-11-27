@@ -206,7 +206,7 @@ namespace spartan
             regions.resize(static_cast<size_t>(array_length) * mip_count);
 
             VkDeviceSize buffer_offset    = 0;
-            VkDeviceSize buffer_alignment = RHI_Device::PropertyGetOptimalBufferCopyOffsetAlignment();
+            VkDeviceSize buffer_alignment = RHI_Device::Caps().optimal_buffer_copy_offset_alignment;
 
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {

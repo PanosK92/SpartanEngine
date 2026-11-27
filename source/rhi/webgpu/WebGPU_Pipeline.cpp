@@ -11,9 +11,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
-#include "../RHI_RasterizerState.h"
-#include "../RHI_BlendState.h"
-#include "../RHI_DepthStencilState.h"
 #include "WebGPU_Internal.h"
 #include <thread>
 //=================================
@@ -439,8 +436,8 @@ namespace spartan
             descriptor.primitive.topology          = webgpu_primitive_topology[static_cast<uint32_t>(state.primitive_topology)];
             descriptor.primitive.frontFace         = WGPUFrontFace_CW;
             descriptor.primitive.cullMode          = (pipeline->imgui || is_line_or_point) ? WGPUCullMode_None : webgpu_cull_mode[static_cast<uint32_t>(state.cull_mode)];
-            const RHI_RasterizerState* rasterizer  = state.rasterizer_state;
-            if (rasterizer && !rasterizer->GetDepthClipEnabled() && webgpu::has_feature(WGPUFeatureName_DepthClipControl))
+            const RHI_RasterizerDesc rasterizer = rhi_rasterizer_desc(state.rasterizer_mode);
+            if (!rasterizer.depth_clip && webgpu::has_feature(WGPUFeatureName_DepthClipControl))
             {
                 descriptor.primitive.unclippedDepth = true;
             }
@@ -449,11 +446,10 @@ namespace spartan
             WGPUDepthStencilState depth_stencil = WGPU_DEPTH_STENCIL_STATE_INIT;
             if (state.render_target_depth_texture)
             {
-                const RHI_DepthStencilState* depth = state.depth_stencil_state;
-                depth_stencil.format               = webgpu::to_format(state.depth_format);
-                const bool depth_test              = depth && depth->GetDepthTestEnabled();
-                depth_stencil.depthWriteEnabled    = (depth_test && depth->GetDepthWriteEnabled()) ? WGPUOptionalBool_True : WGPUOptionalBool_False;
-                depth_stencil.depthCompare         = depth_test ? webgpu_comparison_function[static_cast<uint32_t>(depth->GetDepthComparisonFunction())] : WGPUCompareFunction_Always;
+                const RHI_DepthDesc depth       = rhi_depth_desc(state.depth_mode);
+                depth_stencil.format            = webgpu::to_format(state.depth_format);
+                depth_stencil.depthWriteEnabled = (depth.test_enabled && depth.write_enabled) ? WGPUOptionalBool_True : WGPUOptionalBool_False;
+                depth_stencil.depthCompare      = depth.test_enabled ? webgpu_comparison_function[static_cast<uint32_t>(depth.compare)] : WGPUCompareFunction_Always;
 
                 WGPUStencilFaceState stencil = WGPU_STENCIL_FACE_STATE_INIT;
                 stencil.compare              = WGPUCompareFunction_Always;
@@ -462,33 +458,16 @@ namespace spartan
                 stencil.passOp               = WGPUStencilOperation_Keep;
                 depth_stencil.stencilReadMask  = 0;
                 depth_stencil.stencilWriteMask = 0;
-                if (webgpu::has_stencil(depth_stencil.format) && depth && (depth->GetStencilTestEnabled() || depth->GetStencilWriteEnabled()))
-                {
-                    stencil.compare                = webgpu_comparison_function[static_cast<uint32_t>(depth->GetStencilComparisonFunction())];
-                    stencil.failOp                 = webgpu_stencil_operation[static_cast<uint32_t>(depth->GetStencilFailOperation())];
-                    stencil.depthFailOp            = webgpu_stencil_operation[static_cast<uint32_t>(depth->GetStencilDepthFailOperation())];
-                    stencil.passOp                 = webgpu_stencil_operation[static_cast<uint32_t>(depth->GetStencilPassOperation())];
-                    depth_stencil.stencilReadMask  = depth->GetStencilReadMask();
-                    depth_stencil.stencilWriteMask = depth->GetStencilWriteMask();
-                }
-                depth_stencil.stencilFront = stencil;
-                depth_stencil.stencilBack  = stencil;
-
-                // lines and points can't have depth bias
-                if (rasterizer && !is_line_or_point)
-                {
-                    depth_stencil.depthBias           = static_cast<int32_t>(rasterizer->GetDepthBias());
-                    depth_stencil.depthBiasSlopeScale = rasterizer->GetDepthBiasSlopeScaled();
-                    depth_stencil.depthBiasClamp      = rasterizer->GetDepthBiasClamp();
-                }
-                descriptor.depthStencil = &depth_stencil;
+                depth_stencil.stencilFront   = stencil;
+                depth_stencil.stencilBack    = stencil;
+                descriptor.depthStencil      = &depth_stencil;
             }
 
             // fragment, attachment indices must line up with the render pass so gaps stay undefined
             array<WGPUColorTargetState, rhi_max_render_target_count> targets = {};
             array<WGPUBlendState, rhi_max_render_target_count> blends        = {};
             uint32_t target_count                                            = 0;
-            const RHI_BlendState* blend                                      = state.blend_state;
+            const RHI_BlendDesc blend                                        = rhi_blend_desc(state.blend_mode);
             auto set_target = [&](const uint32_t index, const WGPUTextureFormat format)
             {
                 WGPUColorTargetState& target = targets[index];
@@ -500,14 +479,14 @@ namespace spartan
                     target.writeMask = WGPUColorWriteMask_None;
                 }
 
-                if (blend && blend->GetBlendEnabled() && is_blendable_format(format))
+                if (blend.enabled && is_blendable_format(format))
                 {
-                    blends[index].color.srcFactor = webgpu_blend_factor[static_cast<uint32_t>(blend->GetSourceBlend())];
-                    blends[index].color.dstFactor = webgpu_blend_factor[static_cast<uint32_t>(blend->GetDestBlend())];
-                    blends[index].color.operation = webgpu_blend_operation[static_cast<uint32_t>(blend->GetBlendOp())];
-                    blends[index].alpha.srcFactor = webgpu_blend_factor[static_cast<uint32_t>(blend->GetSourceBlendAlpha())];
-                    blends[index].alpha.dstFactor = webgpu_blend_factor[static_cast<uint32_t>(blend->GetDestBlendAlpha())];
-                    blends[index].alpha.operation = webgpu_blend_operation[static_cast<uint32_t>(blend->GetBlendOpAlpha())];
+                    blends[index].color.srcFactor = webgpu_blend_factor[static_cast<uint32_t>(blend.src_color)];
+                    blends[index].color.dstFactor = webgpu_blend_factor[static_cast<uint32_t>(blend.dst_color)];
+                    blends[index].color.operation = webgpu_blend_operation[static_cast<uint32_t>(blend.op_color)];
+                    blends[index].alpha.srcFactor = webgpu_blend_factor[static_cast<uint32_t>(blend.src_alpha)];
+                    blends[index].alpha.dstFactor = webgpu_blend_factor[static_cast<uint32_t>(blend.dst_alpha)];
+                    blends[index].alpha.operation = webgpu_blend_operation[static_cast<uint32_t>(blend.op_alpha)];
                     target.blend                  = &blends[index];
                 }
                 target_count = max(target_count, index + 1);

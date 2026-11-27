@@ -11,11 +11,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Implementation.h"
 #include "../RHI_Shader.h"
 #include "../RHI_SwapChain.h"
-#include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
-#include "../RHI_RasterizerState.h"
-#include "../RHI_DepthStencilState.h"
-#include "../RHI_DescriptorSetLayout.h"
+#include "RHI_DescriptorSetLayout.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
 #include "../RHI_VendorTechnology.h"
@@ -117,7 +114,7 @@ namespace spartan
             {
                 if (descriptor.type == RHI_Descriptor_Type::PushConstantBuffer)
                 {
-                    SP_ASSERT(descriptor.struct_size <= RHI_Device::PropertyGetMaxPushConstantSize());
+                    SP_ASSERT(descriptor.struct_size <= RHI_Device::Caps().max_push_constant_size);
 
                     VkPushConstantRange push_constant_range  = {};
                     push_constant_range.size                 = descriptor.struct_size;
@@ -216,7 +213,7 @@ namespace spartan
                     {
                         dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
                         dynamic_states.push_back(VK_DYNAMIC_STATE_CULL_MODE);
-                        if (RHI_Device::IsSupportedVrs())
+                        if (RHI_Device::Caps().vrs)
                         { 
                             dynamic_states.push_back(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
                         }
@@ -318,21 +315,16 @@ namespace spartan
             }
 
             // rasterizer state
+            const RHI_RasterizerDesc rasterizer                     = rhi_rasterizer_desc(m_state.rasterizer_mode);
             VkPipelineRasterizationStateCreateInfo rasterizer_state = {};
-            if (m_state.rasterizer_state)
-            {
-                rasterizer_state.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-                rasterizer_state.depthClampEnable        = !m_state.rasterizer_state->GetDepthClipEnabled();
-                rasterizer_state.rasterizerDiscardEnable = VK_FALSE;
-                rasterizer_state.polygonMode             = vulkan_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetPolygonMode())];
-                rasterizer_state.lineWidth               = m_state.rasterizer_state->GetLineWidth();
-                rasterizer_state.cullMode                = vulkan_cull_mode[static_cast<uint32_t>(RHI_CullMode::Back)];
-                rasterizer_state.frontFace               = VK_FRONT_FACE_CLOCKWISE;
-                rasterizer_state.depthBiasEnable         = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
-                rasterizer_state.depthBiasConstantFactor = floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
-                rasterizer_state.depthBiasClamp          = m_state.rasterizer_state->GetDepthBiasClamp();
-                rasterizer_state.depthBiasSlopeFactor    = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
-            }
+            rasterizer_state.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            rasterizer_state.depthClampEnable                       = !rasterizer.depth_clip;
+            rasterizer_state.rasterizerDiscardEnable                = VK_FALSE;
+            rasterizer_state.polygonMode                            = vulkan_polygon_mode[static_cast<uint32_t>(rasterizer.polygon_mode)];
+            rasterizer_state.lineWidth                              = rasterizer.line_width;
+            rasterizer_state.cullMode                               = vulkan_cull_mode[static_cast<uint32_t>(RHI_CullMode::Back)];
+            rasterizer_state.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
+            rasterizer_state.depthBiasEnable                        = VK_FALSE;
             
             // multisampling
             VkPipelineMultisampleStateCreateInfo multisample_state = {};
@@ -343,36 +335,33 @@ namespace spartan
             }
 
             // blend state
+            const RHI_BlendDesc blend                            = rhi_blend_desc(m_state.blend_mode);
             VkPipelineColorBlendStateCreateInfo color_blend_state = {};
             vector<VkPipelineColorBlendAttachmentState> blend_state_attachments;
-            if (m_state.blend_state)
             {
-                // attachments
-                {
-                    // same blend state for all
-                    VkPipelineColorBlendAttachmentState blend_state_attachment = {};
-                    blend_state_attachment.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-                    blend_state_attachment.blendEnable                         = m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
-                    blend_state_attachment.srcColorBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlend())];
-                    blend_state_attachment.dstColorBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlend())];
-                    blend_state_attachment.colorBlendOp                        = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOp())];
-                    blend_state_attachment.srcAlphaBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlendAlpha())];
-                    blend_state_attachment.dstAlphaBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlendAlpha())];
-                    blend_state_attachment.alphaBlendOp                        = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOpAlpha())];
+                // attachments - same blend state for all
+                VkPipelineColorBlendAttachmentState blend_state_attachment = {};
+                blend_state_attachment.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                blend_state_attachment.blendEnable                         = blend.enabled ? VK_TRUE : VK_FALSE;
+                blend_state_attachment.srcColorBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(blend.src_color)];
+                blend_state_attachment.dstColorBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(blend.dst_color)];
+                blend_state_attachment.colorBlendOp                        = vulkan_blend_operation[static_cast<uint32_t>(blend.op_color)];
+                blend_state_attachment.srcAlphaBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(blend.src_alpha)];
+                blend_state_attachment.dstAlphaBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(blend.dst_alpha)];
+                blend_state_attachment.alphaBlendOp                        = vulkan_blend_operation[static_cast<uint32_t>(blend.op_alpha)];
 
-                    // swapchain
-                    if (m_state.render_target_swapchain)
+                // swapchain
+                if (m_state.render_target_swapchain)
+                {
+                    blend_state_attachments.push_back(blend_state_attachment);
+                }
+
+                // render target(s)
+                for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
+                {
+                    if (m_state.render_target_color_textures[i] != nullptr)
                     {
                         blend_state_attachments.push_back(blend_state_attachment);
-                    }
-
-                    // render target(s)
-                    for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
-                    {
-                        if (m_state.render_target_color_textures[i] != nullptr)
-                        {
-                            blend_state_attachments.push_back(blend_state_attachment);
-                        }
                     }
                 }
                 
@@ -381,32 +370,22 @@ namespace spartan
                 color_blend_state.logicOp           = VK_LOGIC_OP_COPY;
                 color_blend_state.attachmentCount   = static_cast<uint32_t>(blend_state_attachments.size());
                 color_blend_state.pAttachments      = blend_state_attachments.data();
-                color_blend_state.blendConstants[0] = m_state.blend_state->GetBlendFactor();
-                color_blend_state.blendConstants[1] = m_state.blend_state->GetBlendFactor();
-                color_blend_state.blendConstants[2] = m_state.blend_state->GetBlendFactor();
-                color_blend_state.blendConstants[3] = m_state.blend_state->GetBlendFactor();
+                color_blend_state.blendConstants[0] = blend.factor;
+                color_blend_state.blendConstants[1] = blend.factor;
+                color_blend_state.blendConstants[2] = blend.factor;
+                color_blend_state.blendConstants[3] = blend.factor;
             }
             
             // depth-stencil state
+            const RHI_DepthDesc depth                                 = rhi_depth_desc(m_state.depth_mode);
             VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
-            if (m_state.depth_stencil_state)
-            {
-                depth_stencil_state.sType             = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-                depth_stencil_state.depthTestEnable   = m_state.depth_stencil_state->GetDepthTestEnabled();
-                depth_stencil_state.depthWriteEnable  = m_state.depth_stencil_state->GetDepthWriteEnabled();
-                depth_stencil_state.depthCompareOp    = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetDepthComparisonFunction())];
-                depth_stencil_state.stencilTestEnable = m_state.depth_stencil_state->GetStencilTestEnabled();
-                depth_stencil_state.front.compareOp   = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilComparisonFunction())];
-                depth_stencil_state.front.failOp      = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilFailOperation())];
-                depth_stencil_state.front.depthFailOp = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilDepthFailOperation())];
-                depth_stencil_state.front.passOp      = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilPassOperation())];
-                depth_stencil_state.front.compareMask = m_state.depth_stencil_state->GetStencilReadMask();
-                depth_stencil_state.front.writeMask   = m_state.depth_stencil_state->GetStencilWriteMask();
-                depth_stencil_state.front.reference   = 1;
-                depth_stencil_state.back              = depth_stencil_state.front;
-                depth_stencil_state.minDepthBounds    = 1.0f; // functionality of DirectX with reverse-z
-                depth_stencil_state.maxDepthBounds    = 0.0f; // functionality of DirectX with reverse-z
-            }
+            depth_stencil_state.sType                                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depth_stencil_state.depthTestEnable                       = depth.test_enabled;
+            depth_stencil_state.depthWriteEnable                      = depth.write_enabled;
+            depth_stencil_state.depthCompareOp                        = vulkan_compare_operator[static_cast<uint32_t>(depth.compare)];
+            depth_stencil_state.stencilTestEnable                     = VK_FALSE;
+            depth_stencil_state.minDepthBounds                        = 1.0f; // functionality of DirectX with reverse-z
+            depth_stencil_state.maxDepthBounds                        = 0.0f; // functionality of DirectX with reverse-z
 
             // pipeline
             {

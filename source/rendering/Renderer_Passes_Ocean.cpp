@@ -723,8 +723,7 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Compute] = shader;
             pso.Prepare();
             RHI_Pipeline* pipeline = nullptr;
-            RHI_DescriptorSetLayout* layout = nullptr;
-            RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+            RHI_Device::GetOrCreatePipeline(pso, pipeline);
             pipelines_ready &= pipeline != nullptr;
         }
         if (!pipelines_ready)
@@ -825,7 +824,7 @@ namespace spartan
             if (m_pass_state.ocean_spectrum_dirty)
             {
                 RHI_CommandList::SetShader(shader_init, "ocean_spectrum_init");
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
                 RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
 
                 m_pass_state.ocean_spectrum_dirty = false;
@@ -834,23 +833,23 @@ namespace spartan
             // spectrum update, evolves the spectrum to the current time
             {
                 RHI_CommandList::SetShader(shader_update, "ocean_spectrum_update");
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
             }
 
             // inverse fft, one dimension at a time, in place on the working textures
             {
                 RHI_CommandList::SetShader(shader_fft_h, "ocean_fft_horizontal");
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 RHI_CommandList::Dispatch(1, n, cascades);
             }
             {
                 RHI_CommandList::SetShader(shader_fft_v, "ocean_fft_vertical");
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 RHI_CommandList::Dispatch(1, n, cascades);
             }
 
@@ -861,14 +860,14 @@ namespace spartan
                 RHI_CommandList::UpdateBuffer(wave_bounds, 0, sizeof(zero_bounds), zero_bounds, false);
                 RHI_CommandList::SetShader(shader_assemble, "ocean_assemble");
                 RHI_CommandList::SetBuffer("ocean_wave_bounds", wave_bounds);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_displacement, tex_displacement);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::ocean_normal, tex_normal);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_displacement, tex_displacement);
+                Renderer::BindTexture(Renderer_BindingsUav::ocean_normal, tex_normal);
                 RHI_CommandList::PrepareBufferForCompute(
                     buffer_heights
                 );
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::ocean_heights, buffer_heights);
+                Renderer::BindBuffer(Renderer_BindingsUav::ocean_heights, buffer_heights);
                 RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
             }
 
@@ -887,7 +886,7 @@ namespace spartan
                 RHI_CommandList::PrepareBufferForReadback(
                     buffer_heights
                 );
-                RHI_CommandList::CopyBufferToBuffer(
+                RHI_CommandList::CopyBuffer(
                     buffer_heights,
                     buffer_readback,
                     buffer_heights->GetObjectSize()

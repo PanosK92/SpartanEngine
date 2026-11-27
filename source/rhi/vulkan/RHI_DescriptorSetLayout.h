@@ -8,8 +8,8 @@ Commercial use requires written permission and negotiated payment terms.
 #pragma once
 
 //= INCLUDES =====================
-#include "../core/SpartanObject.h"
-#include "RHI_Descriptor.h"
+#include "../../core/SpartanObject.h"
+#include "../RHI_Descriptor.h"
 #include <array>
 #include <vector>
 #include <unordered_map>

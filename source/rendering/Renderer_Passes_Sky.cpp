@@ -86,9 +86,9 @@ namespace spartan
                         GetShader(Renderer_Shader::skysphere_sky_view_lut_c),
                         "skysphere_sky_view_lut"
                     );
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_lut_sky_view);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, tex_lut_sky_view);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
                     RHI_CommandList::Dispatch(tex_lut_sky_view);
                     if (!RHI_CommandList::IsPipelineReady())
                         m_pass_state.sky.first_frame = true;
@@ -98,8 +98,8 @@ namespace spartan
                 if (refresh_cloud_shadow)
                 {
                     RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_shadow_c), "cloud_shadow");
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_cloud_shadow);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, tex_cloud_shadow);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
                     RHI_CommandList::Dispatch(tex_cloud_shadow);
                     if (!RHI_CommandList::IsPipelineReady())
                         m_pass_state.sky.first_frame = true;
@@ -115,14 +115,14 @@ namespace spartan
                     GetShader(Renderer_Shader::skysphere_c),
                     "skysphere_atmospheric_scattering"
                 );
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_lut_sky_view);  // catalog stars + procedural milky way, drawn into the panorama like before
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_skysphere);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex3, tex_lut_sky_view);  // catalog stars + procedural milky way, drawn into the panorama like before
                 RHI_Texture* tex_stars = GetStandardTexture(Renderer_StandardTexture::Sky_stars);
                 RHI_Texture* tex_grid  = GetStandardTexture(Renderer_StandardTexture::Sky_star_grid);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_stars ? tex_stars : GetStandardTexture(Renderer_StandardTexture::Black));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, tex_grid  ? tex_grid  : GetStandardTexture(Renderer_StandardTexture::Black));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex5, tex_stars ? tex_stars : GetStandardTexture(Renderer_StandardTexture::Black));
+                Renderer::BindTexture(Renderer_BindingsSrv::tex6, tex_grid  ? tex_grid  : GetStandardTexture(Renderer_StandardTexture::Black));
 
                 // 0.0 in steady state selects the partial dispatch mode in the shader
                 m_pcb_pass_cpu.set(pass_skysphere::warmup_blend, m_pass_state.sky.warmup_this_frame ? m_pass_state.sky.warmup_blend : 0.0f);
@@ -168,8 +168,8 @@ namespace spartan
                     const uint32_t base_h    = tex_skysphere->GetHeight();
                     for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++)
                     {
-                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_skysphere, 0, mip_level);
-                        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_skysphere, mip_level, 1);
+                        Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_skysphere, 0, mip_level);
+                        Renderer::BindTexture(Renderer_BindingsUav::tex, tex_skysphere, mip_level, 1);
 
                         m_pcb_pass_cpu.set(pass_light_integration::mip_level, mip_level);
                         m_pcb_pass_cpu.set(pass_light_integration::mip_count, mip_count);
@@ -214,8 +214,8 @@ namespace spartan
         RHI_CommandList::BeginPass("skysphere_sh_project");
         {
             RHI_CommandList::SetShader(shader, "skysphere_sh_project");
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_sky_sh);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_skysphere);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_sky_sh);
             RHI_CommandList::Dispatch(1, 1, 1);
         }
         RHI_CommandList::EndPass();
@@ -227,12 +227,12 @@ namespace spartan
         RHI_Texture* tex_distance = GetRenderTarget(Renderer_RenderTarget::cloud_raw_distance);
 
         RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_render_c), "clouds_render");
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_sky_view)); // sky fill on the shaded side and the haze in front of far clouds
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
-        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_raw, rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_distance, rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+        Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_sky_view)); // sky fill on the shaded side and the haze in front of far clouds
+        Renderer::BindTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
+        Renderer::BindTexture(Renderer_BindingsUav::tex, tex_raw, rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_distance, rhi_all_mips, 0, eye_layer);
         const uint32_t dispatch_width = (tex_raw->GetWidth() + 1) / 2;
         const uint32_t dispatch_height = (tex_raw->GetHeight() + 1) / 2;
         RHI_CommandList::Dispatch(
@@ -251,14 +251,14 @@ namespace spartan
         RHI_Texture* tex_output_distance = GetRenderTarget(distance_targets[output_index]);
 
         RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_temporal_c), "clouds_temporal");
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::cloud_raw), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::cloud_raw_distance), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(resolved_targets[history_index]), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(distance_targets[history_index]), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_output, rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_output_distance, rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::cloud_raw), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::cloud_raw_distance), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(resolved_targets[history_index]), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(distance_targets[history_index]), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsUav::tex, tex_output, rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsUav::tex2, tex_output_distance, rhi_all_mips, 0, eye_layer);
         m_pcb_pass_cpu.set(pass_clouds::reset_history, !m_pass_state.cloud_history.valid);
         RHI_CommandList::Dispatch(tex_output);
     }
@@ -272,12 +272,12 @@ namespace spartan
         m_pcb_pass_cpu.set(pass_clouds::write_velocity, tex_scene == GetRenderTarget(Renderer_RenderTarget::frame_render));
 
         RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_composite_c), "clouds_composite");
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(resolved_targets[output_index]), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(distance_targets[output_index]), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_scene);
-        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::cloud_velocity), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(resolved_targets[output_index]), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(distance_targets[output_index]), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
+        Renderer::BindTexture(Renderer_BindingsUav::tex, tex_scene);
+        Renderer::BindTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::cloud_velocity), rhi_all_mips, 0, eye_layer);
         RHI_CommandList::Dispatch(tex_scene, GetResolutionScale());
     }
 
@@ -357,11 +357,11 @@ namespace spartan
             RHI_CommandList::SetShader(shader, "clouds_environment");
 
             m_pcb_pass_cpu.set(pass_clouds::environment_row, y0);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_sky_view));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_environment, 0, 1);
+            Renderer::BindTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_sky_view));
+            Renderer::BindTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_environment, 0, 1);
             RHI_CommandList::Dispatch((width + 7) / 8, (rows + 7) / 8);
 
             // a pipeline that is still compiling drew nothing, the strip is tried again next time
@@ -382,8 +382,8 @@ namespace spartan
                 const uint32_t base_h    = tex_environment->GetHeight();
                 for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++)
                 {
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_environment, 0, mip_level);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_environment, 0, mip_level);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
                     m_pcb_pass_cpu.set(pass_light_integration::mip_level, mip_level);
                     m_pcb_pass_cpu.set(pass_light_integration::mip_count, mip_count);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
@@ -465,7 +465,7 @@ namespace spartan
         RHI_CommandList::BeginPass("lut_brdf_specular");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
             RHI_CommandList::Dispatch(tex_lut_brdf_specular);
             produced &= RHI_CommandList::IsPipelineReady();
         }
@@ -487,7 +487,7 @@ namespace spartan
                     GetShader(Renderer_Shader::skysphere_transmittance_lut_c),
                     "lut_atmosphere_transmittance"
                 );
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
                 RHI_CommandList::Dispatch(tex_lut_atmosphere_transmittance);
                 produced &= RHI_CommandList::IsPipelineReady();
             }
@@ -498,8 +498,8 @@ namespace spartan
                     GetShader(Renderer_Shader::skysphere_multiscatter_lut_c),
                     "lut_atmosphere_multiscatter"
                 );
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                Renderer::BindTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
                 RHI_CommandList::Dispatch(tex_lut_atmosphere_multiscatter);
                 produced &= RHI_CommandList::IsPipelineReady();
             }
@@ -528,7 +528,7 @@ namespace spartan
         RHI_CommandList::BeginPass("cloud_noise");
         {
             RHI_CommandList::SetShader(shader);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_cloud_noise);
+            Renderer::BindTexture(Renderer_BindingsUav::tex3d, tex_cloud_noise);
             RHI_CommandList::Dispatch(tex_cloud_noise);
             produced &= RHI_CommandList::IsPipelineReady();
         }
@@ -553,7 +553,7 @@ namespace spartan
         RHI_CommandList::BeginPass("wind_field");
         {
             RHI_CommandList::SetShader(shader);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_wind);
+            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_wind);
             RHI_CommandList::Dispatch(tex_wind);
         }
         RHI_CommandList::EndPass();

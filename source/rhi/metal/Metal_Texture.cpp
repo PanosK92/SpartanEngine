@@ -240,8 +240,6 @@ namespace spartan
 
     void RHI_Texture::RHI_DestroyResource()
     {
-        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
-
         for (void*& view : m_rhi_srv_mips)
         {
             if (view && view != m_rhi_resource)

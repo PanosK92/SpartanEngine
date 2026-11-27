@@ -7,8 +7,6 @@ Commercial use requires written permission and negotiated payment terms.
 
 #include "pch.h"
 #include "D3D12_Buffer.cpp"
-#include "D3D12_DescriptorSet.cpp"
-#include "D3D12_DescriptorSetLayout.cpp"
 #include "D3D12_Queue.cpp"
 #include "D3D12_Sampler.cpp"
 #include "D3D12_SyncPrimitive.cpp"

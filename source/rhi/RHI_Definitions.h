@@ -37,9 +37,6 @@ namespace spartan
     class RHI_DescriptorSet;
     class RHI_DescriptorSetLayout;
     class RHI_SwapChain;
-    class RHI_RasterizerState;
-    class RHI_BlendState;
-    class RHI_DepthStencilState;
     class RHI_InputLayout;
     class RHI_Buffer;
     class RHI_ConstantBuffer;
@@ -264,6 +261,99 @@ namespace spartan
         Max,
         Undefined
     };
+
+    enum class RHI_BlendMode : uint8_t
+    {
+        Off,
+        Alpha,
+        Premultiplied,
+        Additive,
+        Multiply,
+        SurfaceAlpha,
+        DualSourceTransmittance,
+        Ui,
+        Max
+    };
+
+    enum class RHI_DepthMode : uint8_t
+    {
+        Auto, // ReadWrite when a depth target is bound, Off otherwise
+        Off,
+        ReadEqual,
+        ReadGreaterEqual,
+        ReadWrite,
+        Max
+    };
+
+    enum class RHI_RasterizerMode : uint8_t
+    {
+        Solid,
+        Wireframe,
+        SolidNoDepthClip,
+        Max
+    };
+
+    struct RHI_BlendDesc
+    {
+        bool enabled                 = false;
+        RHI_Blend src_color          = RHI_Blend::Src_Alpha;
+        RHI_Blend dst_color          = RHI_Blend::Inv_Src_Alpha;
+        RHI_Blend_Operation op_color = RHI_Blend_Operation::Add;
+        RHI_Blend src_alpha          = RHI_Blend::One;
+        RHI_Blend dst_alpha          = RHI_Blend::One;
+        RHI_Blend_Operation op_alpha = RHI_Blend_Operation::Add;
+        float factor                 = 1.0f;
+    };
+
+    struct RHI_DepthDesc
+    {
+        bool test_enabled               = false;
+        bool write_enabled              = false;
+        RHI_Comparison_Function compare = RHI_Comparison_Function::Never;
+    };
+
+    struct RHI_RasterizerDesc
+    {
+        RHI_PolygonMode polygon_mode = RHI_PolygonMode::Solid;
+        bool depth_clip              = true;
+        float line_width             = 3.0f;
+    };
+
+    inline constexpr RHI_BlendDesc rhi_blend_desc(const RHI_BlendMode mode)
+    {
+        switch (mode)
+        {
+            case RHI_BlendMode::Alpha:                   return { true, RHI_Blend::Src_Alpha,  RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One,           RHI_Blend::One,  RHI_Blend_Operation::Add, 0.0f };
+            case RHI_BlendMode::Premultiplied:           return { true, RHI_Blend::One,        RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One,           RHI_Blend::One,  RHI_Blend_Operation::Add, 0.0f };
+            case RHI_BlendMode::Additive:                return { true, RHI_Blend::One,        RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One,           RHI_Blend::One,  RHI_Blend_Operation::Add, 1.0f };
+            case RHI_BlendMode::Multiply:                return { true, RHI_Blend::Dest_Color, RHI_Blend::Zero,          RHI_Blend_Operation::Add, RHI_Blend::Zero,          RHI_Blend::One,  RHI_Blend_Operation::Add, 0.0f };
+            case RHI_BlendMode::SurfaceAlpha:            return { true, RHI_Blend::Src_Alpha,  RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::Zero,          RHI_Blend::One,  RHI_Blend_Operation::Add, 0.0f };
+            case RHI_BlendMode::DualSourceTransmittance: return { true, RHI_Blend::One,        RHI_Blend::Src1_Color,    RHI_Blend_Operation::Add, RHI_Blend::Zero,          RHI_Blend::One,  RHI_Blend_Operation::Add, 0.0f };
+            case RHI_BlendMode::Ui:                      return { true, RHI_Blend::Src_Alpha,  RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::Inv_Src_Alpha, RHI_Blend::Zero, RHI_Blend_Operation::Add, 1.0f };
+            default:                                     return {};
+        }
+    }
+
+    inline constexpr RHI_DepthDesc rhi_depth_desc(const RHI_DepthMode mode)
+    {
+        switch (mode)
+        {
+            case RHI_DepthMode::ReadEqual:        return { true,  false, RHI_Comparison_Function::Equal };
+            case RHI_DepthMode::ReadGreaterEqual: return { true,  false, RHI_Comparison_Function::GreaterEqual };
+            case RHI_DepthMode::ReadWrite:        return { true,  true,  RHI_Comparison_Function::GreaterEqual };
+            default:                              return { false, false, RHI_Comparison_Function::Never };
+        }
+    }
+
+    inline constexpr RHI_RasterizerDesc rhi_rasterizer_desc(const RHI_RasterizerMode mode)
+    {
+        switch (mode)
+        {
+            case RHI_RasterizerMode::Wireframe:        return { RHI_PolygonMode::Wireframe, true,  3.0f };
+            case RHI_RasterizerMode::SolidNoDepthClip: return { RHI_PolygonMode::Solid,     false, 3.0f };
+            default:                                   return { RHI_PolygonMode::Solid,     true,  3.0f };
+        }
+    }
 
     enum class RHI_Descriptor_Type
     {

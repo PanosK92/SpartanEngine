@@ -211,7 +211,7 @@ namespace spartan
                 GetShader(Renderer_Shader::icon_v),
                 GetShader(Renderer_Shader::icon_p)
             );
-            RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
+            RHI_CommandList::SetBlend(RHI_BlendMode::Alpha);
             RHI_CommandList::SetColorTarget(tex_out);
 
             m_pcb_pass_cpu.set(pass_icon::icon_size, Vector2(static_cast<float>(renderer_editor_icon_size_px), static_cast<float>(renderer_editor_icon_size_px)));
@@ -230,7 +230,7 @@ namespace spartan
                     return;
                 }
 
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, current_texture);
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, current_texture);
                 RHI_CommandList::Draw(run_icons * 6, vertex_offset);
                 vertex_offset += run_icons * 6;
                 run_icons = 0;
@@ -271,12 +271,12 @@ namespace spartan
             Renderer_Shader::grid_p,
             { tex_out },
             nullptr,
-            GetBlendState(Renderer_BlendState::Alpha),
-            GetDepthStencilState(Renderer_DepthStencilState::Off),
-            nullptr,
+            RHI_BlendMode::Alpha,
+            RHI_DepthMode::Off,
+            RHI_RasterizerMode::Solid,
             [&]()
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
 
                 const float grid_spacing       = 1.0f;
                 const Vector3& camera_position = Renderer::GetViewCamera()->GetEntity()->GetPosition();
@@ -327,12 +327,12 @@ namespace spartan
             // The line shader also handles solid vertex colours and rejects fragments behind
             // scene depth. Alpha blend over the scene without writing to its depth buffer.
             RHI_CommandList::SetShaders(GetShader(Renderer_Shader::line_v), GetShader(Renderer_Shader::line_p));
-            RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
-            RHI_CommandList::SetDepthStencilState(GetDepthStencilState(Renderer_DepthStencilState::Off));
-            RHI_CommandList::SetRasterizerState(GetRasterizerState(Renderer_RasterizerState::Solid));
+            RHI_CommandList::SetBlend(RHI_BlendMode::Alpha);
+            RHI_CommandList::SetDepth(RHI_DepthMode::Off);
+            RHI_CommandList::SetRasterizer(RHI_RasterizerMode::Solid);
             RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology::TriangleList);
             RHI_CommandList::SetColorTarget(tex_out);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+            Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
             RHI_CommandList::SetBufferVertex(vertex_buffer.get());
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
             RHI_CommandList::Draw(frame.debug_triangles_vertex_count);
@@ -371,11 +371,11 @@ namespace spartan
             RHI_CommandList::BeginPass("lines");
             {
                 RHI_CommandList::SetShaders(shader_v, shader_p);
-                RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
-                RHI_CommandList::SetRasterizerState(GetRasterizerState(Renderer_RasterizerState::Wireframe));
+                RHI_CommandList::SetBlend(RHI_BlendMode::Alpha);
+                RHI_CommandList::SetRasterizer(RHI_RasterizerMode::Wireframe);
                 RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
                 RHI_CommandList::SetColorTarget(tex_out);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                Renderer::BindTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
 
                 RHI_CommandList::SetBufferVertex(vertex_buffer.get());
 
@@ -430,7 +430,7 @@ namespace spartan
                     RHI_CommandList::BeginPass("color_silhouette");
                     {
                         RHI_CommandList::SetShaders(shader_v, shader_p);
-                        RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Additive));
+                        RHI_CommandList::SetBlend(RHI_BlendMode::Additive);
                         RHI_CommandList::SetClearColor(0, Color::standard_transparent);
                         RHI_CommandList::SetColorTarget(tex_outline);
 
@@ -530,8 +530,8 @@ namespace spartan
                         RHI_CommandList::BeginPass("composition");
                         {
                             RHI_CommandList::SetShader(shader_c);
-                            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
-                            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_outline);
+                            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
+                            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_outline);
                             RHI_CommandList::Dispatch(tex_out);
                         }
                         RHI_CommandList::EndPass();
@@ -617,8 +617,8 @@ namespace spartan
                     m_pcb_pass_cpu.set(pass_blur::rect_x1, x1);
                     m_pcb_pass_cpu.set(pass_blur::rect_y1, y1);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_backdrop);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_backdrop);
+                    Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
                     RHI_CommandList::Dispatch((static_cast<uint32_t>(x1 - x0) + 7) / 8, (static_cast<uint32_t>(y1 - y0) + 7) / 8);
                     RHI_CommandList::EndPass();
                 }
@@ -628,7 +628,7 @@ namespace spartan
         RHI_CommandList::BeginPass("text");
         {
             RHI_CommandList::SetShaders(shader_v, shader_p);
-            RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
+            RHI_CommandList::SetBlend(RHI_BlendMode::Alpha);
             RHI_CommandList::SetColorTarget(tex_out);
             RHI_CommandList::SetCullMode(RHI_CullMode::Back);
             m_pcb_pass_cpu.set(pass_font::display_encoded, display_encoded);
@@ -650,14 +650,14 @@ namespace spartan
                     outline.a     = 1.0f;
                     m_pcb_pass_cpu.set(pass_font::outline_color, outline);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, font->GetAtlasOutline().get());
+                    Renderer::BindTexture(Renderer_BindingsSrv::tex, font->GetAtlasOutline().get());
                     RHI_CommandList::DrawIndexed(font->GetIndexCount());
                 }
 
                 // zero alpha tells the shader to use the per vertex color
                 m_pcb_pass_cpu.set(pass_font::outline_color, Vector4::Zero);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, font->GetAtlas().get());
+                Renderer::BindTexture(Renderer_BindingsSrv::tex, font->GetAtlas().get());
                 RHI_CommandList::DrawIndexed(font->GetIndexCount());
             }
         }

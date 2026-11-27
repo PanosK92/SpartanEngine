@@ -18,12 +18,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Texture.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
-#include "../RHI_DescriptorSet.h"
-#include "../RHI_DescriptorSetLayout.h"
+#include "RHI_DescriptorSet.h"
+#include "RHI_DescriptorSetLayout.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_SwapChain.h"
-#include "../RHI_RasterizerState.h"
-#include "../RHI_DepthStencilState.h"
 #include "../RHI_VendorTechnology.h"
 #include "../../profiling/Profiler.h"
 #include "../../error_handling/Breadcrumbs.h"
@@ -1217,64 +1215,7 @@ namespace spartan
             }
         }
 
-        namespace occlusion
-        {
-            uint32_t index              = 0;
-            uint32_t index_active       = 0;
-            bool occlusion_query_active = false;
-            const uint32_t query_count  = 4096;
-            array<uint64_t, query_count> visible_samples;
-            unordered_map<uint64_t, uint32_t> id_to_index;
-
-            void update(void* query_pool)
-            {
-                vkGetQueryPoolResults(
-                    RHI_Context::device,                                 // device
-                    static_cast<VkQueryPool>(query_pool),                // queryPool
-                    0,                                                   // firstQuery
-                    query_count,                                         // queryCount
-                    query_count * sizeof(uint64_t),                      // dataSize
-                    visible_samples.data(),                              // pData
-                    sizeof(uint64_t),                                    // stride
-                    VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT // flags
-                );
-            }
-
-            void reset(void* cmd_list, void*& query_pool)
-            {
-                vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
-
-                // reset index counter and clear mappings to prevent overflow
-                // this is safe because the query pool is reset, so all previous results are invalidated
-                index = 0;
-                id_to_index.clear();
-                visible_samples.fill(0);
-            }
-
-            uint32_t allocate_index(uint64_t entity_id)
-            {
-                // check if entity already has an index
-                auto it = id_to_index.find(entity_id);
-                if (it != id_to_index.end())
-                {
-                    return it->second;
-                }
-
-                // allocate new index with bounds checking
-                if (index >= query_count - 1)
-                {
-                    // pool is full - return invalid index (0 is reserved)
-                    SP_LOG_WARNING("Occlusion query pool exhausted, some objects may not be queried");
-                    return 0;
-                }
-
-                uint32_t new_index = ++index;
-                id_to_index[entity_id] = new_index;
-                return new_index;
-            }
-        }
-
-        void initialize(void*& pool_timestamp, void*& pool_occlusion)
+        void initialize(void*& pool_timestamp)
         {
             // timestamps
             if (cvar_debug_gpu_timing.GetValue())
@@ -1290,26 +1231,11 @@ namespace spartan
 
                 timestamp::timestamps.fill(0);
             }
-
-            // occlusion
-            {
-                VkQueryPoolCreateInfo query_pool_info = {};
-                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-                query_pool_info.queryType             = VK_QUERY_TYPE_OCCLUSION;
-                query_pool_info.queryCount            = occlusion::query_count;
-
-                auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_occlusion);
-                SP_ASSERT_VK(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool));
-                RHI_Device::SetResourceName(pool_occlusion, RHI_Resource_Type::QueryPool, "query_pool_occlusion");
-
-                occlusion::visible_samples.fill(0);
-            }
         }
 
-        void shutdown(void*& pool_timestamp, void*& pool_occlusion)
+        void shutdown(void*& pool_timestamp)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_timestamp);
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_occlusion);
         }
     }
 
@@ -1357,7 +1283,7 @@ namespace spartan
 
         m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, (string(name) + "timeline").c_str());
 
-        queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
+        queries::initialize(m_rhi_query_pool_timestamps);
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -1365,7 +1291,7 @@ namespace spartan
         ReadbackTimestampsForProfiler();
         if (m_timestamp_sample) m_timestamp_sample->ready = true;
         ReleasePendingWork();
-        queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
+        queries::shutdown(m_rhi_query_pool_timestamps);
     }
 
     void RHI_CommandList::Begin()
@@ -1416,7 +1342,6 @@ namespace spartan
             // timestamp queries are reset before first use
             m_timestamp_index = 0;
             queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
-            m_occlusion_query_pool_reset = false;
         }
 
         Profiler::SubmissionBegin(this, m_queue->GetType());
@@ -1584,7 +1509,7 @@ namespace spartan
             // set some dynamic states
             if (m_pso.IsGraphics())
             {
-                if (m_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe)
+                if (m_pso.rasterizer_mode == RHI_RasterizerMode::Wireframe)
                 {
                     set_cull_mode(RHI_CullMode::None);
                 }
@@ -1822,7 +1747,7 @@ namespace spartan
             attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
             attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrs_input_texture->GetRhiRtv());
             attachment_shading_rate.imageLayout                    = VK_IMAGE_LAYOUT_GENERAL;
-            attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
+            attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::Caps().max_shading_rate_texel_size_x, RHI_Device::Caps().max_shading_rate_texel_size_y };
     
             rendering_info.pNext = &attachment_shading_rate;
         }
@@ -1995,34 +1920,6 @@ namespace spartan
         Profiler::m_rhi_draw++;
     }
 
-    void RHI_CommandList::draw_indexed_indirect_count(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(args_buffer  != nullptr);
-        SP_ASSERT(count_buffer != nullptr);
-        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
-        TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
-
-        PreDraw();
-        if (!m_pipeline)
-            return;
-
-        // stride between consecutive indirect commands (5 uint32s = 20 bytes)
-        static const uint32_t stride = sizeof(uint32_t) * 5;
-
-        vkCmdDrawIndexedIndirectCount(
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkBuffer>(args_buffer->GetRhiResource()),
-            static_cast<VkDeviceSize>(args_offset),
-            static_cast<VkBuffer>(count_buffer->GetRhiResource()),
-            static_cast<VkDeviceSize>(count_offset),
-            max_draw_count,
-            stride
-        );
-
-        Profiler::m_rhi_draw++;
-    }
-
     void RHI_CommandList::draw_indirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -2049,7 +1946,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(args_buffer != nullptr);
-        SP_ASSERT_MSG(RHI_Device::IsSupportedMeshShaders(), "Mesh shaders are not supported on this device");
+        SP_ASSERT_MSG(RHI_Device::Caps().mesh_shaders, "Mesh shaders are not supported on this device");
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         if (!m_mesh_cull_barrier_satisfied)
@@ -2139,7 +2036,7 @@ namespace spartan
         auto it = m_shader_binding_tables.find(pipeline_handle);
         if (it == m_shader_binding_tables.end())
         {
-            uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+            uint32_t handle_size = RHI_Device::Caps().shader_group_handle_size;
             auto sbt = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "sbt");
             it = m_shader_binding_tables.emplace(pipeline_handle, move(sbt)).first;
             it->second->UpdateHandles(this);
@@ -2589,22 +2486,7 @@ namespace spartan
         Profiler::m_rhi_pipeline_barriers++;
     }
 
-    void RHI_CommandList::copy_buffer_to_buffer(void* source, RHI_Buffer* destination, uint64_t size)
-    {
-        SP_ASSERT(source && destination && size > 0);
-        render_pass_end();
-
-        VkBufferCopy region = {};
-        region.size         = size;
-        vkCmdCopyBuffer(
-            static_cast<VkCommandBuffer>(GetRhiResource()),
-            *reinterpret_cast<VkBuffer*>(&source),
-            static_cast<VkBuffer>(destination->GetRhiResource()),
-            1, &region
-        );
-    }
-
-    void RHI_CommandList::copy_buffer_to_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
+    void RHI_CommandList::copy_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
         SP_ASSERT(source && destination && size > 0);
         render_pass_end();
@@ -2823,7 +2705,7 @@ namespace spartan
         {
             return;
         }
-        SP_ASSERT(size <= RHI_Device::PropertyGetMaxPushConstantSize());
+        SP_ASSERT(size <= RHI_Device::Caps().max_push_constant_size);
         m_push_constant_size = size;
 
         uint32_t stages = m_pipeline->GetPushConstantStages();
@@ -3154,76 +3036,6 @@ namespace spartan
                 m_timestamp_sample->available[i] = queries::timestamp::availability[i] != 0;
         }
         m_timestamp_sample->ready = true;
-    }
-
-    void RHI_CommandList::begin_occlusion_query(const uint64_t entity_id)
-    {
-        SP_ASSERT_MSG(m_pso.IsGraphics(), "Occlusion queries are only supported in graphics pipelines");
-
-        if (!m_occlusion_query_pool_reset)
-        {
-            render_pass_end();
-            queries::occlusion::reset(
-                m_rhi_resource,
-                m_rhi_query_pool_occlusion
-            );
-            m_occlusion_query_pool_reset = true;
-        }
-
-        queries::occlusion::index_active = queries::occlusion::allocate_index(entity_id);
-        if (queries::occlusion::index_active == 0)
-        {
-            // pool exhausted, skip this query
-            return;
-        }
-
-        if (!m_render_pass_active)
-        {
-            RenderPassBegin();
-        }
-
-        vkCmdBeginQuery(
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            queries::occlusion::index_active,
-            0
-        );
-
-        queries::occlusion::occlusion_query_active = true;
-    }
-
-    void RHI_CommandList::end_occlusion_query()
-    {
-        if (!queries::occlusion::occlusion_query_active)
-        {
-            return;
-        }
-
-        vkCmdEndQuery(
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            queries::occlusion::index_active
-        );
-
-        queries::occlusion::occlusion_query_active = false;
-    }
-
-    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
-    {
-        if (queries::occlusion::id_to_index.find(entity_id) == queries::occlusion::id_to_index.end())
-        {
-            return false;
-        }
-
-        uint32_t index  = queries::occlusion::id_to_index[entity_id];
-        uint64_t result = queries::occlusion::visible_samples[index];
-
-        return result == 0;
-    }
-
-    void RHI_CommandList::update_occlusion_queries()
-    {
-        queries::occlusion::update(m_rhi_query_pool_occlusion);
     }
 
     void RHI_CommandList::begin_timeblock(const char* name, const bool gpu_marker, const bool gpu_timing)

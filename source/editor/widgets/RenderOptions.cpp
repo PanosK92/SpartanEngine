@@ -64,7 +64,7 @@ namespace
         // these register during static init, before the device can report ray tracing support, so their stored default always reads as off
         if (strcmp(name, "r.ray_traced_reflections") == 0 || strcmp(name, "r.ray_traced_shadows") == 0)
         {
-            return RHI_Device::IsSupportedRayTracing() ? 1.0f : 0.0f;
+            return RHI_Device::Caps().ray_tracing ? 1.0f : 0.0f;
         }
 
         const ConsoleVariable* variable = ConsoleRegistry::Get().Find(name);
@@ -652,7 +652,7 @@ namespace
 
     void section_lighting()
     {
-        const bool rt_supported = RHI_Device::IsSupportedRayTracing();
+        const bool rt_supported = RHI_Device::Caps().ray_tracing;
         static const vector<string> modes = { "Hybrid", "ReSTIR PT", "Reference path tracer" };
         uint32_t mode = !rt_supported ? 0 : cvar_restir_pt.GetValueAs<bool>() ? 1 : cvar_path_tracing.GetValueAs<bool>() ? 2 : 0;
         const string& summary = modes[mode];

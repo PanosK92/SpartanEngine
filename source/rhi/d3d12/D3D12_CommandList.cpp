@@ -17,7 +17,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Pipeline.h"
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
-#include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_AccelerationStructure.h"
 #include "../../profiling/Profiler.h"
 #include "../../error_handling/Breadcrumbs.h"
@@ -1057,25 +1056,16 @@ namespace spartan
         }
     }
 
-    // timestamp and occlusion heaps keyed by command list, so the d3d12 handles stay out of the rhi header
+    // timestamp heaps keyed by command list, so the d3d12 handles stay out of the rhi header
     namespace queries
     {
-        constexpr uint32_t timestamp_count    = 256;
-        constexpr uint32_t occlusion_count    = 4096;
+        constexpr uint32_t timestamp_count = 256;
 
         struct CmdListQueries
         {
             ID3D12QueryHeap*  heap_timestamp     = nullptr;
             ID3D12Resource*   readback_timestamp = nullptr;
             uint32_t          timestamps_used    = 0;
-
-            ID3D12QueryHeap*  heap_occlusion     = nullptr;
-            ID3D12Resource*   readback_occlusion = nullptr;
-            uint32_t          occlusion_index    = 0;
-            uint32_t          occlusion_active   = 0;
-            bool              occlusion_query_in_flight = false;
-            std::unordered_map<uint64_t, uint32_t> occlusion_id_to_index;
-            std::array<uint64_t, occlusion_count>  occlusion_data = {};
         };
 
         std::unordered_map<const RHI_CommandList*, CmdListQueries> per_cmd;
@@ -1098,8 +1088,6 @@ namespace spartan
             CmdListQueries& q = it->second;
             if (q.heap_timestamp)     { q.heap_timestamp->Release();     q.heap_timestamp = nullptr; }
             if (q.readback_timestamp) { q.readback_timestamp->Release(); q.readback_timestamp = nullptr; }
-            if (q.heap_occlusion)     { q.heap_occlusion->Release();     q.heap_occlusion = nullptr; }
-            if (q.readback_occlusion) { q.readback_occlusion->Release(); q.readback_occlusion = nullptr; }
             per_cmd.erase(it);
         }
 
@@ -1148,18 +1136,6 @@ namespace spartan
                     q.readback_timestamp = create_readback(timestamp_count);
                 }
             }
-
-            // occlusion heap, only valid on graphics queues
-            if (queue_type == RHI_Queue_Type::Graphics)
-            {
-                D3D12_QUERY_HEAP_DESC desc = {};
-                desc.Type    = D3D12_QUERY_HEAP_TYPE_OCCLUSION;
-                desc.Count   = occlusion_count;
-                if (SUCCEEDED(RHI_Context::device->CreateQueryHeap(&desc, IID_PPV_ARGS(&q.heap_occlusion))))
-                {
-                    q.readback_occlusion = create_readback(occlusion_count);
-                }
-            }
         }
 
         void resolve(ID3D12GraphicsCommandList* cmd_list, CmdListQueries& q)
@@ -1167,10 +1143,6 @@ namespace spartan
             if (q.heap_timestamp && q.readback_timestamp && q.timestamps_used > 0)
             {
                 cmd_list->ResolveQueryData(q.heap_timestamp, D3D12_QUERY_TYPE_TIMESTAMP, 0, q.timestamps_used, q.readback_timestamp, 0);
-            }
-            if (q.heap_occlusion && q.readback_occlusion && q.occlusion_index > 0)
-            {
-                cmd_list->ResolveQueryData(q.heap_occlusion, D3D12_QUERY_TYPE_OCCLUSION, 0, q.occlusion_index, q.readback_occlusion, 0);
             }
         }
 
@@ -1393,10 +1365,9 @@ namespace spartan
 
         m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, (string(name) + "_timeline").c_str());
 
-        // create timestamp/occlusion query heaps and matching readback buffers, queries side-table holds them
+        // create timestamp query heap and matching readback buffer, queries side-table holds them
         queries::initialize(this, queue->GetType());
         m_rhi_query_pool_timestamps = queries::get(this).heap_timestamp;
-        m_rhi_query_pool_occlusion  = queries::get(this).heap_occlusion;
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -1416,10 +1387,9 @@ namespace spartan
         );
         m_rhi_state = nullptr;
 
-        // tear down per-cmd-list query heaps + readback buffers
+        // tear down per-cmd-list query heap + readback buffer
         queries::erase(this);
         m_rhi_query_pool_timestamps = nullptr;
-        m_rhi_query_pool_occlusion  = nullptr;
 
         if (m_rhi_fence_event)
         {
@@ -1477,11 +1447,7 @@ namespace spartan
         // reset per-frame counters, queries::resolve at submit time uses the previous values to size the resolve
         {
             queries::CmdListQueries& q = queries::get(this);
-            q.timestamps_used  = 0;
-            q.occlusion_index  = 0;
-            q.occlusion_active = 0;
-            q.occlusion_query_in_flight = false;
-            q.occlusion_id_to_index.clear();
+            q.timestamps_used = 0;
         }
         m_timestamp_index = 0;
 
@@ -1615,8 +1581,7 @@ namespace spartan
         }
 
         RHI_Pipeline* pipeline = nullptr;
-        RHI_DescriptorSetLayout* descriptor_set_layout = nullptr;
-        RHI_Device::GetOrCreatePipeline(pso, pipeline, descriptor_set_layout);
+        RHI_Device::GetOrCreatePipeline(pso, pipeline);
 
         const bool is_compute    = pso.IsCompute();
         const bool is_raytracing = pso.IsRayTracing();
@@ -1872,7 +1837,7 @@ namespace spartan
 
         // queue vrs transition so rtvs, dsv, and vrs share one Barrier() call
         ID3D12Resource* vrs_resource = nullptr;
-        if (m_pso.vrs_input_texture && RHI_Device::IsSupportedVrs())
+        if (m_pso.vrs_input_texture && RHI_Device::Caps().vrs)
         {
             RHI_Texture* vrs = m_pso.vrs_input_texture;
             vrs_resource = static_cast<ID3D12Resource*>(vrs->GetRhiResource());
@@ -1942,7 +1907,7 @@ namespace spartan
             RHI_Device::SetVariableRateShading(this, true);
             static_cast<ID3D12GraphicsCommandList7*>(cmd_list)->RSSetShadingRateImage(vrs_resource);
         }
-        else if (RHI_Device::IsSupportedVrs())
+        else if (RHI_Device::Caps().vrs)
         {
             RHI_Device::SetVariableRateShading(this, false);
         }
@@ -2141,55 +2106,6 @@ namespace spartan
         Profiler::m_rhi_draw++;
     }
 
-    void RHI_CommandList::draw_indexed_indirect_count(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        PrepareDispatch();
-        if (!m_pipeline)
-            return;
-        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
-        TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
-        auto& b = cmd_state::get(this);
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-
-        if (!args_buffer || !count_buffer || !b.has_root_signature_graphics)
-        {
-            cmd_state::flush(cmd_list, b);
-            return;
-        }
-
-        SynchronizeResources();
-        static ID3D12CommandSignature* command_signature = nullptr;
-        if (!command_signature)
-        {
-            D3D12_INDIRECT_ARGUMENT_DESC arg_desc = {};
-            arg_desc.Type                         = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
-
-            D3D12_COMMAND_SIGNATURE_DESC desc = {};
-            desc.ByteStride        = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
-            desc.NumArgumentDescs  = 1;
-            desc.pArgumentDescs    = &arg_desc;
-            if (FAILED(RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature))))
-            {
-                SP_LOG_ERROR("Failed to create draw indexed indirect count command signature");
-                return;
-            }
-        }
-
-        ID3D12Resource* args_resource  = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
-        ID3D12Resource* count_resource = static_cast<ID3D12Resource*>(count_buffer->GetRhiResource());
-        b.gpu_used_buffers.insert(args_resource);
-        b.gpu_used_buffers.insert(count_resource);
-
-        flush_pending_bindings(cmd_list, this, false);
-        cmd_list->ExecuteIndirect(
-            command_signature, max_draw_count,
-            args_resource,  static_cast<UINT64>(args_offset),
-            count_resource, static_cast<UINT64>(count_offset)
-        );
-        Profiler::m_rhi_draw++;
-    }
-
     void RHI_CommandList::dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -2260,7 +2176,7 @@ namespace spartan
         PrepareDispatch();
         if (!m_pipeline)
             return;
-        SP_ASSERT_MSG(RHI_Device::IsSupportedMeshShaders(), "Mesh shaders are not supported on this device");
+        SP_ASSERT_MSG(RHI_Device::Caps().mesh_shaders, "Mesh shaders are not supported on this device");
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -2373,7 +2289,7 @@ namespace spartan
         auto it = m_shader_binding_tables.find(pipeline_handle);
         if (it == m_shader_binding_tables.end())
         {
-            uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+            uint32_t handle_size = RHI_Device::Caps().shader_group_handle_size;
             auto sbt = std::make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "sbt");
             it = m_shader_binding_tables.emplace(pipeline_handle, std::move(sbt)).first;
         }
@@ -3012,8 +2928,7 @@ namespace spartan
         pso_variant.Prepare();
 
         RHI_Pipeline* pipeline                       = nullptr;
-        RHI_DescriptorSetLayout* descriptor_set_layout = nullptr;
-        RHI_Device::GetOrCreatePipeline(pso_variant, pipeline, descriptor_set_layout);
+        RHI_Device::GetOrCreatePipeline(pso_variant, pipeline);
 
         if (pipeline && pipeline->GetRhiResource())
         {
@@ -3647,84 +3562,6 @@ namespace spartan
         m_timestamp_sample->ready = true;
     }
 
-    void RHI_CommandList::begin_occlusion_query(const uint64_t entity_id)
-    {
-        SP_ASSERT_MSG(m_pso.IsGraphics(), "Occlusion queries are only supported in graphics pipelines");
-        if (!m_rhi_query_pool_occlusion)
-        {
-            return;
-        }
-
-        queries::CmdListQueries& q = queries::get(this);
-
-        // reuse the slot if this entity has been queried before, otherwise grab the next index
-        auto it = q.occlusion_id_to_index.find(entity_id);
-        uint32_t slot = 0;
-        if (it != q.occlusion_id_to_index.end())
-        {
-            slot = it->second;
-        }
-        else
-        {
-            if (q.occlusion_index >= queries::occlusion_count - 1)
-            {
-                return;
-            }
-            slot = ++q.occlusion_index;
-            q.occlusion_id_to_index[entity_id] = slot;
-        }
-
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_occlusion);
-        cmd_list->BeginQuery(heap, D3D12_QUERY_TYPE_OCCLUSION, slot);
-
-        q.occlusion_active = slot;
-        q.occlusion_query_in_flight = true;
-    }
-
-    void RHI_CommandList::end_occlusion_query()
-    {
-        if (!m_rhi_query_pool_occlusion)
-        {
-            return;
-        }
-
-        queries::CmdListQueries& q = queries::get(this);
-        if (!q.occlusion_query_in_flight)
-        {
-            return;
-        }
-
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_occlusion);
-        cmd_list->EndQuery(heap, D3D12_QUERY_TYPE_OCCLUSION, q.occlusion_active);
-
-        q.occlusion_query_in_flight = false;
-    }
-
-    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
-    {
-        queries::CmdListQueries& q = queries::get(this);
-        auto it = q.occlusion_id_to_index.find(entity_id);
-        if (it == q.occlusion_id_to_index.end())
-        {
-            return false;
-        }
-        uint64_t visible_pixels = q.occlusion_data[it->second];
-        // mirror Vulkan behavior, occluded means zero visible pixels
-        return visible_pixels == 0;
-    }
-
-    void RHI_CommandList::update_occlusion_queries()
-    {
-        queries::CmdListQueries& q = queries::get(this);
-        if (!q.readback_occlusion || q.occlusion_index == 0)
-        {
-            return;
-        }
-        queries::readback_data(q.readback_occlusion, q.occlusion_data.data(), std::min<uint32_t>(q.occlusion_index + 1, queries::occlusion_count));
-    }
-
     void RHI_CommandList::begin_timeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
         SP_ASSERT(name != nullptr);
@@ -4350,61 +4187,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::copy_buffer_to_buffer(void* source, RHI_Buffer* destination, uint64_t size)
-    {
-        if (!source || !destination || size == 0)
-        {
-            return;
-        }
-
-        ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
-        if (!dst)
-        {
-            return;
-        }
-
-        // stage host data through a transient upload buffer, then copy into dst on this cmd list
-        void* staging_ptr = RHI_Device::StagingBufferAcquire(size);
-        ID3D12Resource* staging = static_cast<ID3D12Resource*>(staging_ptr);
-        if (!staging)
-        {
-            return;
-        }
-
-        void* mapped = nullptr;
-        D3D12_RANGE rr = { 0, 0 };
-        if (FAILED(staging->Map(0, &rr, &mapped)) || !mapped)
-        {
-            RHI_Device::StagingBufferRelease(staging_ptr);
-            return;
-        }
-        memcpy(mapped, source, static_cast<size_t>(size));
-        staging->Unmap(0, nullptr);
-
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        auto& b = cmd_state::get(this);
-
-        constexpr D3D12_BARRIER_SYNC buffer_gpu_sync =
-            D3D12_BARRIER_SYNC_DRAW | D3D12_BARRIER_SYNC_COMPUTE_SHADING | D3D12_BARRIER_SYNC_RAYTRACING | D3D12_BARRIER_SYNC_EXECUTE_INDIRECT | D3D12_BARRIER_SYNC_COPY;
-        constexpr D3D12_BARRIER_ACCESS buffer_gpu_access =
-            D3D12_BARRIER_ACCESS_VERTEX_BUFFER | D3D12_BARRIER_ACCESS_CONSTANT_BUFFER | D3D12_BARRIER_ACCESS_INDEX_BUFFER |
-            D3D12_BARRIER_ACCESS_UNORDERED_ACCESS | D3D12_BARRIER_ACCESS_SHADER_RESOURCE | D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT |
-            D3D12_BARRIER_ACCESS_COPY_SOURCE | D3D12_BARRIER_ACCESS_COPY_DEST;
-        if (b.gpu_used_buffers.count(dst) != 0 || cmd_state::has_pending_buffer_barrier(b, dst))
-        {
-            cmd_state::push_buffer_barrier(b, dst, buffer_gpu_sync, D3D12_BARRIER_SYNC_COPY, buffer_gpu_access, D3D12_BARRIER_ACCESS_COPY_DEST);
-            cmd_state::flush(cmd_list, b);
-        }
-
-        cmd_list->CopyBufferRegion(dst, 0, staging, 0, size);
-        b.gpu_used_buffers.insert(dst);
-
-        cmd_state::push_buffer_barrier(b, dst, D3D12_BARRIER_SYNC_COPY, buffer_gpu_sync, D3D12_BARRIER_ACCESS_COPY_DEST, buffer_gpu_access);
-
-        RetainStagingBuffer(staging_ptr);
-    }
-
-    void RHI_CommandList::copy_buffer_to_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
+    void RHI_CommandList::copy_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
         if (!source || !destination)
         {

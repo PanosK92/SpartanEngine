@@ -13,8 +13,13 @@ Commercial use requires written permission and negotiated payment terms.
 #define MESH_SHADER_NUMTHREADS 64
 //====================
 
-// depth prepass mesh path, opaque emits position only, alpha emits slim uv+material for cutout ps
+// depth/visibility pass mesh path, opaque emits position only, alpha emits slim uv+material for cutout ps
 // one workgroup per survivor, the indirect group count bounds the dispatch
+
+#ifdef VISIBILITY_ALPHA
+#define DEPTH_ALPHA
+#define VISIBILITY_PASS
+#endif
 
 // the opaque and alpha halves are separate shader variants, so the half is a compile time constant
 // it used to come from a push constant, which never landed in the mesh stage and filtered out every survivor
@@ -34,6 +39,9 @@ static const bool want_late = false;
 struct MeshPrimitive
 {
     bool cull_primitive : SV_CullPrimitive;
+#ifdef VISIBILITY_PASS
+    uint vis_id         : SV_PrimitiveID;
+#endif
 };
 
 groupshared MeshletInstance gs_mi;
@@ -198,6 +206,9 @@ void main_ms(
 
         MeshPrimitive prim;
         prim.cull_primitive     = cull;
+#ifdef VISIBILITY_PASS
+        prim.vis_id             = VIS_FLAG_MESHLET | ((mi_idx & VIS_MESHLET_MASK) << VIS_TRI_BITS) | (t_index & VIS_TRI_MASK);
+#endif
         out_primitives[t_index] = prim;
         out_indices[t_index]    = uint3(i0, i1, i2);
     }

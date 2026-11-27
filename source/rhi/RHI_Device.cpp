@@ -44,28 +44,8 @@ namespace spartan
 #endif
     }
 
-    // device properties
-    float RHI_Device::m_timestamp_period                            = 0;
-    uint64_t RHI_Device::m_min_uniform_buffer_offset_alignment      = 0;
-    uint64_t RHI_Device::m_min_storage_buffer_offset_alignment      = 0;
-    uint64_t RHI_Device::m_min_acceleration_buffer_offset_alignment = 0;
-    uint32_t RHI_Device::m_max_texture_2d_dimension                 = 0;
-    uint32_t RHI_Device::m_max_push_constant_size                   = 0;
-    uint32_t RHI_Device::m_max_shading_rate_texel_size_x            = 0;
-    uint32_t RHI_Device::m_max_shading_rate_texel_size_y            = 0;
-    uint64_t RHI_Device::m_optimal_buffer_copy_offset_alignment     = 0;
-    uint32_t RHI_Device::m_shader_group_handle_size                 = 0;
-    uint32_t RHI_Device::m_shader_group_handle_alignment            = 0;
-    uint32_t RHI_Device::m_shader_group_base_alignment              = 0;
-    bool RHI_Device::m_is_shading_rate_supported                    = false;
-    bool RHI_Device::m_xess_supported                               = false;
-    bool RHI_Device::m_dlss_supported                               = false;
-    bool RHI_Device::m_metalfx_supported                            = false;
-    bool RHI_Device::m_is_ray_tracing_supported                     = false;
-    bool RHI_Device::m_is_mesh_shaders_supported                    = false;
-    bool RHI_Device::m_is_tessellation_supported                    = true;
-    bool RHI_Device::m_is_shader_base_instance_supported            = false;
-    bool RHI_Device::m_is_bc_compression_supported                 = true;
+    // device capabilities
+    RHI_DeviceCaps RHI_Device::m_caps                               = {};
     void (*RHI_Device::m_pipeline_bound_callback)(RHI_CommandList*) = nullptr;
     const void* RHI_Device::m_default_push_constants                = nullptr;
     uint32_t RHI_Device::m_default_push_constants_size              = 0;
@@ -121,8 +101,8 @@ namespace spartan
 
     bool RHI_Device::IsValidResolution(const uint32_t width, const uint32_t height)
     {
-        return width  >= 4 && width  <= m_max_texture_2d_dimension &&
-               height >= 4 && height <= m_max_texture_2d_dimension;
+        return width  >= 4 && width  <= m_caps.max_texture_2d_dimension &&
+               height >= 4 && height <= m_caps.max_texture_2d_dimension;
     }
 
     void RHI_Device::SetPipelineBoundCallback(void (*callback)(RHI_CommandList*))

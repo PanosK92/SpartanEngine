@@ -9,7 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include <unordered_set>
 #include "../RHI_Implementation.h"
-#include "../RHI_DescriptorSetLayout.h"
+#include "RHI_DescriptorSetLayout.h"
 #include "../RHI_Device.h"
 //=====================================
 

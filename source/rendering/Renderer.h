@@ -42,9 +42,6 @@ namespace spartan
     class RHI_Sampler;
     class RHI_CommandList;
     class RHI_Viewport;
-    class RHI_RasterizerState;
-    class RHI_DepthStencilState;
-    class RHI_BlendState;
     class RHI_SyncPrimitive;
     class RHI_AccelerationStructure;
     enum class MeshType;
@@ -114,6 +111,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_frame_generation;
     extern TConsoleVar<float> cvar_variable_rate_shading;
     extern TConsoleVar<float> cvar_mesh_shaders;
+    extern TConsoleVar<bool>  cvar_visibility_buffer;
     extern TConsoleVar<float> cvar_resolution_scale;
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_resolution_output_match_viewport;
@@ -406,9 +404,6 @@ namespace spartan
         std::array<RHI_Texture*, rhi_max_array_size>& GetBindlessMaterialTextures();
 
         // get individual
-        RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);
-        RHI_DepthStencilState* GetDepthStencilState(const Renderer_DepthStencilState type);
-        RHI_BlendState* GetBlendState(const Renderer_BlendState type);
         Camera* GetViewCamera();
         RHI_Texture* GetRenderTarget(const Renderer_RenderTarget type);
         RHI_Shader* GetShader(const Renderer_Shader type);
@@ -444,9 +439,6 @@ namespace spartan
         void CreateBuffers();
         void CreateFrameResources(uint32_t index);
         void EnsureCullingBufferCapacity(uint32_t draws, uint64_t instances, uint64_t meshlets);
-        void CreateDepthStencilStates();
-        void CreateRasterizerStates();
-        void CreateBlendStates();
         void CreateShaders();
         void CreateSamplers();
         void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
@@ -488,9 +480,10 @@ namespace spartan
         void Pass_CullPhase(uint32_t mode);
         void Pass_Cull_Early();
         void Pass_Cull_Late();
-        void Pass_Depth_Prepass(bool late);
+        void Pass_Visibility(bool late);
         void Pass_GBuffer(const bool is_transparent_pass, const bool submit_before_scatter = false);
         void Pass_SkidMarks();
+        void Pass_Material_Resolve(const bool clear_targets = true, const bool scatter_cleared = false);
         void Pass_GBuffer_Indirect(const bool clear_targets = true);
         void Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass);
         void Pass_Transparent(uint32_t eye, uint32_t eye_layer = rhi_all_mips);

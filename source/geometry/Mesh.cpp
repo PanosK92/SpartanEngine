@@ -2483,7 +2483,7 @@ namespace spartan
 
             constexpr uint32_t baked_res = GeometryParentPage::baked_resolution;
             generated_cache::Hash hash;
-            hash.Add(uint32_t{4});
+            hash.Add(uint32_t{5});
             hash.Add(GeometryParentPage::frames);
             hash.Add(baked_res);
             hash_file_stamp(hash, leaf_maps.albedo_path);
@@ -2505,7 +2505,7 @@ namespace spartan
             hash.Add(bark_indices);
             const auto path = generated_cache::Path(World::GetResourceDirectory(), "canopy", hash.value);
             vector<uint32_t> atlas;
-            constexpr size_t words = GeometryParentPage::frames * GeometryParentPage::frames * baked_res * baked_res * 2;
+            constexpr size_t words = GeometryParentPage::frames * GeometryParentPage::frames * (baked_res * baked_res * 2 + 1);
             const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
             if (!cache || !generated_cache::Load(path, hash.value, atlas) || atlas.size() != words)
             {
@@ -2553,7 +2553,7 @@ namespace spartan
             proxy->uv_min = lo;
             proxy->uv_scale = Vector2(max(hi.x - lo.x, 1e-6f), max(hi.y - lo.y, 1e-6f));
             generated_cache::Hash hash;
-            hash.Add(uint32_t{1});
+            hash.Add(uint32_t{2});
             hash.Add(GeometryParentPage::frames);
             hash.Add(GeometryParentPage::resolution);
             hash.Add(GeometryParentPage::layers);
@@ -2561,8 +2561,8 @@ namespace spartan
             hash.Add(indices);
             const auto path = generated_cache::Path(World::GetResourceDirectory(), "canopy", hash.value);
             vector<uint32_t> atlas;
-            constexpr size_t words = GeometryParentPage::frames * GeometryParentPage::frames * GeometryParentPage::resolution *
-                GeometryParentPage::resolution * GeometryParentPage::layers * 2;
+            constexpr size_t words = GeometryParentPage::frames * GeometryParentPage::frames *
+                (GeometryParentPage::resolution * GeometryParentPage::resolution * GeometryParentPage::layers * 2 + 1);
             const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
             if (!cache || !generated_cache::Load(path, hash.value, atlas) || atlas.size() != words)
             {
@@ -2817,7 +2817,7 @@ namespace spartan
 
     void Mesh::BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update, bool finest)
     {
-        SP_ASSERT(RHI_Device::IsSupportedRayTracing());
+        SP_ASSERT(RHI_Device::Caps().ray_tracing);
 
         // wait until the mesh has been fully published by the loader,
         // sub_meshes and global buffer offsets are only consistent after CreateGpuBuffers has run

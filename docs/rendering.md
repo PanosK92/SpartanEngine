@@ -12,7 +12,7 @@ The public API is the `spartan::Renderer` static class in [`Renderer.h`](../sour
 | `Renderer_Definitions.h` | `Renderer_Shader`, `Renderer_RenderTarget`, `Renderer_Buffer` enums, budgets and tonemapper/upscaler enums |
 | `Renderer_Resources.cpp` | Creation of every shader, render target, buffer and sampler. New shaders are registered here |
 | `Renderer_ConsoleVariables.cpp` | The `r.*` [console variables](console_variables.md) |
-| `Renderer_Passes_Geometry.cpp` | Culling, depth prepass, Hi-Z, G-buffer, shadows, meshlets, grass |
+| `Renderer_Passes_Geometry.cpp` | Culling, visibility pass, Hi-Z, material resolve (G-buffer), shadows, meshlets, grass |
 | `Renderer_Passes_Lighting.cpp` | Light clustering, deferred lighting, IBL, fog, flares, ReSTIR |
 | `Renderer_Passes_Sky.cpp` | Sky, atmosphere and cloud LUTs, volumetric clouds |
 | `Renderer_Passes_Ocean.cpp` | FFT ocean |
@@ -33,10 +33,10 @@ Before recording, `Renderer::Tick` streams textures, uploads changed geometry an
 4. **Simulation passes**: wind field, vegetation interaction, terrain deformation (tire ruts), ocean wake, car rain, FFT ocean.
 5. **Variable rate shading** image.
 6. **Sky**.
-7. **Geometry**, two-phase occlusion culling:
-   - Early cull against last frame's Hi-Z, depth prepass, build an early Hi-Z.
-   - Late cull of what the early pass rejected against the new Hi-Z, depth prepass, build the final Hi-Z.
-   - Grass population, then the opaque **G-buffer**.
+7. **Geometry**, two-phase occlusion culling and visibility buffer:
+   - Early cull against last frame's Hi-Z, **visibility pass** (`Pass_Visibility`) writing depth and a 32-bit `visibility_buffer` (encoding meshlet instance + triangle ID or impostor instance ID), build an early Hi-Z.
+   - Late cull of what the early pass rejected against the new Hi-Z, late **visibility pass**, build the final Hi-Z.
+   - Grass population and GPU-scattered grass, then **material resolve** (`Pass_Material_Resolve`): `visibility_classify` classifies 8×8 tiles into opaque, alpha-tested and impostor indirect dispatch lists (masking pixels already shaded by scatter-first grass), and three specialized compute dispatches reconstruct attributes with analytic screen-space derivatives and evaluate the shared `g_buffer.hlsl` material pipeline once per visible pixel. Tessellated geometry and skid marks draw onto the resolved G-buffer. Setting `r.visibility_buffer 0` (or running wireframe/vertices views, stereo XR or non-mesh-shader hardware) falls back to the legacy depth prepass + G-buffer raster pass.
 8. **Hybrid lighting** computes ambient occlusion, shadows, deferred lighting, image-based lighting, transparent lighting and reflections according to the hybrid settings.
 9. **ReSTIR PT** uses opaque and transparent G-buffer surfaces to initialize paths, resamples their direct and indirect contributions across frames and neighboring pixels, and composites the denoised lighting with visible emission and sky. Selecting this mode in Render Options bypasses the hybrid surface lighting passes. The saved hybrid settings apply again when switching back.
 10. Cloud composition, light flares and volumetric fog follow surface lighting.
@@ -53,14 +53,15 @@ The CPU does not loop over draws. It uploads data once and issues one indirect d
 - **Global geometry**: every mesh is appended to a single vertex buffer and a single index buffer, plus meshlet and instance buffers (`GeometryBuffer`). Shaders pull vertices from these buffers directly, bypassing the input assembler, and ray tracing reads the same data.
 - **Per-draw data**: `Renderer::WriteDrawData` fills one bindless storage buffer with transforms, material index and flags (up to 32,768 draws). Push constants carry only pass parameters and an index.
 - **Materials and lights**: `UpdateMaterials` and `UpdateLights` write `MaterialParameters` and `LightParameters` arrays. Material textures are one bindless texture array.
-- **Culling**: compute shaders cull instances and meshlets (frustum, Hi-Z occlusion, backface cones) and write indirect arguments; the CPU issues `DrawIndexedIndirectCount`. Mesh shaders are used when available (`r.mesh_shaders`), otherwise vertex pulling.
+- **Culling**: compute shaders cull instances and meshlets (frustum, Hi-Z occlusion, backface cones) and write indirect arguments; the CPU issues indirect draws (`DrawMeshTasksIndirect` with mesh shaders when `r.mesh_shaders` is active, otherwise `DrawIndirect` with vertex pulling).
+- **Visibility buffer and material resolve**: when `r.visibility_buffer` is active on the mesh-shader path, geometry is rasterized once in `Pass_Visibility` into `gbuffer_depth` and a 32-bit `R32_Uint` `visibility_buffer`. `Pass_Material_Resolve` then runs an 8×8 tile classifier (`visibility_classify.hlsl`) and three indirect compute resolve passes (`visibility_resolve.hlsl` for opaque, alpha-tested and impostor tiles) that compute homogeneous adjoint barycentrics and analytic UV/world/normal derivatives directly from `GeometryBuffer`, sharing `evaluate_gbuffer()` in `g_buffer.hlsl` with zero 2×2 pixel-quad overshading and no duplicate geometry pass.
 - **Layouts**: CPU and GPU share structure definitions through [`data/shaders/shared_buffers.h`](../data/shaders/shared_buffers.h). Bindless register spaces are declared in `common_resources_bindless.hlsl`.
 
 To add a pass: declare it in `Renderer.h`, register its shader in `Renderer::CreateShaders()` and any render targets in `CreateRenderTargets()`, implement it in the relevant `Renderer_Passes_*.cpp` using the existing `Pass_*` functions as templates, and call it from `ProduceFrame`.
 
 ## RHI
 
-[`source/rhi`](../source/rhi) abstracts the graphics API. The shared interface is `RHI_Device`, `RHI_Queue`, `RHI_CommandList`, `RHI_Buffer`, `RHI_Texture`, `RHI_Shader`, `RHI_PipelineState`, `RHI_SwapChain`, `RHI_AccelerationStructure`, `RHI_Sampler` and the descriptor and sync types. Each backend implements them in its own folder:
+[`source/rhi`](../source/rhi) abstracts the graphics API. The shared interface is `RHI_Device` (with plain POD capabilities via `RHI_Device::Caps()`), `RHI_Queue`, `RHI_CommandList` (pass setters, `CopyBuffer`, barriers and draw/dispatch), `RHI_Buffer`, `RHI_Texture`, `RHI_Shader`, `RHI_PipelineState` (with value enums `RHI_BlendMode`, `RHI_DepthMode`, `RHI_RasterizerMode`), `RHI_SwapChain`, `RHI_AccelerationStructure`, `RHI_Sampler` and sync types. Vulkan-only descriptor set caching lives in `rhi/vulkan/`. Typed renderer slot binding helpers (`Renderer::BindTexture`, `BindBuffer`, `BindConstantBuffer`, `BindAccelerationStructure`) live in `Renderer_Internal.h` so `source/rhi` stays independent of renderer enums. Each backend implements the RHI in its own folder:
 
 | Backend | Folder | Shader path |
 | ------- | ------ | ----------- |
@@ -80,7 +81,7 @@ All shaders are HLSL in [`data/shaders`](../data/shaders):
 | Group | Files |
 | ----- | ----- |
 | Common | `common.hlsl`, `common_structs.hlsl`, `common_resources*.hlsl`, `common_vertex_processing.hlsl`, `common_culling.hlsl`, `shared_buffers.h` |
-| Geometry | `depth_prepass.hlsl`, `g_buffer.hlsl`, `meshlet_*.hlsl`, `indirect_cull*.hlsl`, `instance_cull.hlsl`, `grass_*.hlsl` |
+| Geometry | `depth_prepass.hlsl`, `visibility_classify.hlsl`, `visibility_resolve.hlsl`, `g_buffer.hlsl`, `meshlet_*.hlsl`, `impostor_mesh.hlsl`, `indirect_cull*.hlsl`, `instance_cull.hlsl`, `grass_*.hlsl` |
 | Lighting | `light.hlsl`, `light_composition.hlsl`, `light_image_based.hlsl`, `light_cluster*.hlsl`, `shadow_*.hlsl` |
 | Ray tracing | `reflections_*.hlsl`, `ray_traced_shadows.hlsl`, `restir_*.hlsl`, `path_tracing.hlsl`, `nrd/` |
 | Atmosphere | `sky/`, `fog*.hlsl`, `particles*.hlsl` |

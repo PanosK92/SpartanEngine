@@ -10,10 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
-#include "../RHI_RasterizerState.h"
 #include "../RHI_Shader.h"
-#include "../RHI_BlendState.h"
-#include "../RHI_DepthStencilState.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_Texture.h"
@@ -185,25 +182,12 @@ namespace spartan
         }
 
         // rasterizer description
+        const RHI_RasterizerDesc rasterizer   = rhi_rasterizer_desc(state.rasterizer_mode);
         D3D12_RASTERIZER_DESC desc_rasterizer = {};
-        if (state.rasterizer_state)
-        {
-            desc_rasterizer.FillMode              = d3d12_polygon_mode[static_cast<uint32_t>(state.rasterizer_state->GetPolygonMode())];
-            desc_rasterizer.CullMode              = pso_is_imgui(state) ? D3D12_CULL_MODE_NONE : d3d12_cull_mode[static_cast<uint32_t>(state.cull_mode)];
-            desc_rasterizer.FrontCounterClockwise = false;
-            // d3d12 expects an integer bias in units of the depth format's smallest representable value,
-            // scale by 2^24 to match the vulkan depthBiasConstantFactor so both backends produce the same offset
-            desc_rasterizer.DepthBias             = static_cast<INT>(floorf(state.rasterizer_state->GetDepthBias() * static_cast<float>(1 << 24)));
-            desc_rasterizer.DepthBiasClamp        = state.rasterizer_state->GetDepthBiasClamp();
-            desc_rasterizer.SlopeScaledDepthBias  = state.rasterizer_state->GetDepthBiasSlopeScaled();
-            desc_rasterizer.DepthClipEnable       = state.rasterizer_state->GetDepthClipEnabled();
-        }
-        else
-        {
-            desc_rasterizer.FillMode        = D3D12_FILL_MODE_SOLID;
-            desc_rasterizer.CullMode        = D3D12_CULL_MODE_NONE;
-            desc_rasterizer.DepthClipEnable = true;
-        }
+        desc_rasterizer.FillMode              = d3d12_polygon_mode[static_cast<uint32_t>(rasterizer.polygon_mode)];
+        desc_rasterizer.CullMode              = pso_is_imgui(state) ? D3D12_CULL_MODE_NONE : d3d12_cull_mode[static_cast<uint32_t>(state.cull_mode)];
+        desc_rasterizer.FrontCounterClockwise = false;
+        desc_rasterizer.DepthClipEnable       = rasterizer.depth_clip;
 
         // for hdr swapchains (r10g10b10a2_unorm), dwm uses the alpha channel during compositing,
         // imgui's standard alpha blending overwrites alpha to 0 which makes the window transparent on hdr displays,
@@ -214,23 +198,16 @@ namespace spartan
         D3D12_BLEND_DESC desc_blend_state = {};
         {
             // build a single attachment blend desc then replicate it across all targets, matches the vulkan path
+            const RHI_BlendDesc blend             = rhi_blend_desc(state.blend_mode);
             D3D12_RENDER_TARGET_BLEND_DESC rt_blend = {};
-            if (state.blend_state)
-            {
-                rt_blend.BlendEnable           = state.blend_state->GetBlendEnabled();
-                rt_blend.SrcBlend              = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetSourceBlend())];
-                rt_blend.DestBlend             = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetDestBlend())];
-                rt_blend.BlendOp               = d3d12_blend_operation[static_cast<uint32_t>(state.blend_state->GetBlendOp())];
-                rt_blend.SrcBlendAlpha         = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetSourceBlendAlpha())];
-                rt_blend.DestBlendAlpha        = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetDestBlendAlpha())];
-                rt_blend.BlendOpAlpha          = d3d12_blend_operation[static_cast<uint32_t>(state.blend_state->GetBlendOpAlpha())];
-                rt_blend.RenderTargetWriteMask = write_mask;
-            }
-            else
-            {
-                rt_blend.BlendEnable           = false;
-                rt_blend.RenderTargetWriteMask = write_mask;
-            }
+            rt_blend.BlendEnable                  = blend.enabled;
+            rt_blend.SrcBlend                     = d3d12_blend_factor[static_cast<uint32_t>(blend.src_color)];
+            rt_blend.DestBlend                    = d3d12_blend_factor[static_cast<uint32_t>(blend.dst_color)];
+            rt_blend.BlendOp                      = d3d12_blend_operation[static_cast<uint32_t>(blend.op_color)];
+            rt_blend.SrcBlendAlpha                = d3d12_blend_factor[static_cast<uint32_t>(blend.src_alpha)];
+            rt_blend.DestBlendAlpha               = d3d12_blend_factor[static_cast<uint32_t>(blend.dst_alpha)];
+            rt_blend.BlendOpAlpha                 = d3d12_blend_operation[static_cast<uint32_t>(blend.op_alpha)];
+            rt_blend.RenderTargetWriteMask        = write_mask;
 
             auto is_dual_source = [](D3D12_BLEND factor)
             {
@@ -264,27 +241,12 @@ namespace spartan
         }
 
         // depth-stencil state
+        const RHI_DepthDesc depth                         = rhi_depth_desc(state.depth_mode);
         D3D12_DEPTH_STENCIL_DESC desc_depth_stencil_state = {};
-        if (state.depth_stencil_state)
-        {
-            desc_depth_stencil_state.DepthEnable                  = state.depth_stencil_state->GetDepthTestEnabled();
-            desc_depth_stencil_state.DepthWriteMask               = state.depth_stencil_state->GetDepthWriteEnabled() ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-            desc_depth_stencil_state.DepthFunc                    = d3d12_comparison_function[static_cast<uint32_t>(state.depth_stencil_state->GetDepthComparisonFunction())];
-            desc_depth_stencil_state.StencilEnable                = static_cast<BOOL>(state.depth_stencil_state->GetStencilTestEnabled() || state.depth_stencil_state->GetStencilWriteEnabled());
-            desc_depth_stencil_state.StencilReadMask              = state.depth_stencil_state->GetStencilReadMask();
-            desc_depth_stencil_state.StencilWriteMask             = state.depth_stencil_state->GetStencilWriteMask();
-            desc_depth_stencil_state.FrontFace.StencilFailOp      = d3d12_stencil_operation[static_cast<uint32_t>(state.depth_stencil_state->GetStencilFailOperation())];
-            desc_depth_stencil_state.FrontFace.StencilDepthFailOp = d3d12_stencil_operation[static_cast<uint32_t>(state.depth_stencil_state->GetStencilDepthFailOperation())];
-            desc_depth_stencil_state.FrontFace.StencilPassOp      = d3d12_stencil_operation[static_cast<uint32_t>(state.depth_stencil_state->GetStencilPassOperation())];
-            desc_depth_stencil_state.FrontFace.StencilFunc        = d3d12_comparison_function[static_cast<uint32_t>(state.depth_stencil_state->GetStencilComparisonFunction())];
-            desc_depth_stencil_state.BackFace                     = desc_depth_stencil_state.FrontFace;
-        }
-        else
-        {
-            desc_depth_stencil_state.DepthEnable    = false;
-            desc_depth_stencil_state.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-            desc_depth_stencil_state.StencilEnable  = false;
-        }
+        desc_depth_stencil_state.DepthEnable              = depth.test_enabled;
+        desc_depth_stencil_state.DepthWriteMask           = depth.write_enabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+        desc_depth_stencil_state.DepthFunc                = d3d12_comparison_function[static_cast<uint32_t>(depth.compare)];
+        desc_depth_stencil_state.StencilEnable            = false;
 
         // input layout
         D3D12_INPUT_LAYOUT_DESC desc_input_layout = {};

@@ -62,7 +62,11 @@ static const float scatter_blend_dirt_line = 0.5f;
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index)
 {
+#ifdef VISIBILITY_RESOLVE
+    return GET_TEXTURE(texture_index).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy, vis_duv_dx, vis_duv_dy);
+#else
     return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
+#endif
 }
 
 uint paint_hash(int2 cell, uint seed)
@@ -622,6 +626,7 @@ float3 compute_flower_color(float2 uv, float packed_variant)
     return col;
 }
 
+#ifndef VISIBILITY_RESOLVE
 #ifdef INDIRECT_DRAW
 gbuffer_indirect_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
 {
@@ -706,8 +711,12 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     return vertex;
 #endif
 }
+#endif
 
-#ifdef GRASS_SPECIALIZED
+#ifdef VISIBILITY_RESOLVE
+gbuffer evaluate_gbuffer(gbuffer_vertex vertex, bool is_front_face, float3 dpdx_world, float3 dpdy_world, float3 face_normal_in, float3 dndx_normal, float3 dndy_normal)
+{
+#elif defined(GRASS_SPECIALIZED)
 #if defined(GRASS_OPAQUE) && !defined(API_WEBGPU)
 [earlydepthstencil]
 #endif
@@ -779,6 +788,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float3 camera_to_pixel = position_world - get_camera_position_for_view(vertex.view_id);
     float distance         = fast_sqrt(dot(camera_to_pixel, camera_to_pixel));
 
+#ifdef VISIBILITY_RESOLVE
+    float3 face_normal = face_normal_in;
+    face_normal *= dot(face_normal, camera_to_pixel) > 0.0f ? -1.0f : 1.0f;
+#else
     // taken at top level, the terrain paths below sit behind branches where a derivative is undefined
     float3 dpdx_world = ddx(position_world);
     float3 dpdy_world = ddy(position_world);
@@ -786,6 +799,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float face_normal_length_sq = dot(face_normal, face_normal);
     face_normal = face_normal_length_sq > 0.0f ? face_normal * rsqrt(face_normal_length_sq) : normalize(vertex.normal);
     face_normal *= dot(face_normal, camera_to_pixel) > 0.0f ? -1.0f : 1.0f;
+#endif
 
 #ifdef GRASS_SPECIALIZED
     // Dedicated slim pixel path for GPU-scattered grass blades: eliminates road POM, ocean FFT,
@@ -934,7 +948,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float3 tangent_normal = normalize(unpack(normal_sample));
             if (material.is_normal_green_up())
             {
+#ifdef VISIBILITY_RESOLVE
+                tangent_normal.y *= -uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, vis_duv_dx, vis_duv_dy);
+#else
                 tangent_normal.y *= -uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, ddx(vertex.uv_misc.xy), ddy(vertex.uv_misc.xy));
+#endif
             }
             tangent_normal.z          = fast_sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));
             tangent_normal.xy        *= saturate(max(0.01f, material.normal));
@@ -975,8 +993,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         if (surface.has_texture_normal())
         {
+#ifdef VISIBILITY_RESOLVE
+            float3 dndu    = dndx_normal;
+            float3 dndv    = dndy_normal;
+#else
             float3 dndu    = ddx(normal);
             float3 dndv    = ddy(normal);
+#endif
             float variance = 0.25f * (dot(dndu, dndu) + dot(dndv, dndv));
             roughness      = fast_sqrt(saturate(roughness * roughness + min(2.0f * variance, 0.18f)));
         }
@@ -1061,15 +1084,25 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float2 uv_invert   = vertex.uv_xform_ir.xy;
         float  uv_rotation = vertex.uv_xform_ir.z;
 
-        float2 uv_world = compute_world_space_uv(position_world, normal);
-        uv_world        = uv_world * uv_tiling + uv_offset;
+        float2 uv_world_raw = compute_world_space_uv(position_world, normal);
+        float2 uv_world     = uv_world_raw * uv_tiling + uv_offset;
+#ifdef VISIBILITY_RESOLVE
+        vis_duv_dx = (compute_world_space_uv(position_world + dpdx_world, normal) - uv_world_raw) * uv_tiling;
+        vis_duv_dy = (compute_world_space_uv(position_world + dpdy_world, normal) - uv_world_raw) * uv_tiling;
+#endif
 
         // branchless inversion
         float2 invert_mask = step(0.5f, uv_invert);
         uv_world           = lerp(uv_world, 1.0f - frac(uv_world) + floor(uv_world), invert_mask);
 
         if (uv_rotation != 0.0f)
+        {
             uv_world = rotate_uv_90(uv_world, uv_rotation);
+#ifdef VISIBILITY_RESOLVE
+            vis_duv_dx = rotate_uv_90(vis_duv_dx, uv_rotation);
+            vis_duv_dy = rotate_uv_90(vis_duv_dy, uv_rotation);
+#endif
+        }
 
         vertex.uv_misc.xy = uv_world;
     }
@@ -1241,8 +1274,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float fade    = parallax_fade(distance, n_dot_v);
         if (fade > 0.0f)
         {
+#ifdef VISIBILITY_RESOLVE
+            float2 dx = vis_duv_dx;
+            float2 dy = vis_duv_dy;
+#else
             float2 dx = ddx(vertex.uv_misc.xy);
             float2 dy = ddy(vertex.uv_misc.xy);
+#endif
 
             v_tangent.y *= uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, dx, dy);
             vertex.uv_misc.xy = parallax_occlusion_uv(
@@ -1347,7 +1385,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // emission
     if (surface.has_texture_emissive())
     {
-        float3 emissive = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
+        float3 emissive = sample_texture(vertex, material_texture_index_emission).rgb;
         if (material.is_emissive_srgb())
         {
             emissive = srgb_to_linear(emissive);
@@ -1370,7 +1408,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float3 tangent_normal = normalize(unpack(normal_sample));
 
         if (material.is_normal_green_up())
+        {
+#ifdef VISIBILITY_RESOLVE
+            tangent_normal.y *= -uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, vis_duv_dx, vis_duv_dy);
+#else
             tangent_normal.y *= -uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, ddx(vertex.uv_misc.xy), ddy(vertex.uv_misc.xy));
+#endif
+        }
     
         // reconstruct z for bc5 two-channel normal maps
         tangent_normal.z = fast_sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));
@@ -1569,8 +1613,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     bool is_car_paint = (material.flags & (1u << 25)) != 0 || material_has_flakes(material);
     if (is_car_paint && pass_is_opaque())
     {
-        float2 flake_uv  = vertex.uv_misc.xy * max(material.flake_scale, 1.0f);
-        float  footprint = max(length(ddx(flake_uv)), length(ddy(flake_uv)));
+        float  flake_scale = max(material.flake_scale, 1.0f);
+        float2 flake_uv    = vertex.uv_misc.xy * flake_scale;
+#ifdef VISIBILITY_RESOLVE
+        float  footprint   = max(length(vis_duv_dx * flake_scale), length(vis_duv_dy * flake_scale));
+#else
+        float  footprint   = max(length(ddx(flake_uv)), length(ddy(flake_uv)));
+#endif
 
         // every level doubles the cell so a pixel covers about one, a dithered pick between neighbouring
         // levels lets taa blend them, past the last level only the aggregate lobe is left
@@ -1799,8 +1848,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         const float SPECULAR_AA_SIGMA2 = 0.25f;
         const float SPECULAR_AA_KAPPA  = 0.18f;
 
+#ifdef VISIBILITY_RESOLVE
+        float3 dndu = dndx_normal;
+        float3 dndv = dndy_normal;
+#else
         float3 dndu = ddx(normal);
         float3 dndv = ddy(normal);
+#endif
 
         float variance  = SPECULAR_AA_SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
         float kernel    = min(2.0f * variance, SPECULAR_AA_KAPPA);

@@ -155,7 +155,7 @@ namespace spartan
         if (end_tick > start_tick)
         {
             uint64_t duration_ticks = end_tick - start_tick;
-            m_duration = clamp(static_cast<float>(duration_ticks * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f), 0.0f, 1000.0f);
+            m_duration = clamp(static_cast<float>(duration_ticks * RHI_Device::Caps().timestamp_period * 1e-6f), 0.0f, 1000.0f);
         }
         else
         {

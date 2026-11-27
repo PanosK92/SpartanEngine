@@ -43,9 +43,9 @@ namespace spartan
         void SetDepthTarget(RHI_Texture* texture);
 
         //= STATE =========================================================================
-        RHI_RasterizerState* rasterizer_state      = nullptr;
-        RHI_BlendState* blend_state                = nullptr;
-        RHI_DepthStencilState* depth_stencil_state = nullptr;
+        RHI_RasterizerMode rasterizer_mode         = RHI_RasterizerMode::Solid;
+        RHI_BlendMode blend_mode                   = RHI_BlendMode::Off;
+        RHI_DepthMode depth_mode                   = RHI_DepthMode::Auto;
         RHI_SwapChain* render_target_swapchain     = nullptr;
         RHI_PrimitiveTopology primitive_topology   = RHI_PrimitiveTopology::TriangleList;
         RHI_Texture* render_target_depth_texture   = nullptr;

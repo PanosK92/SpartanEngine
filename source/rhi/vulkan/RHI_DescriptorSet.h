@@ -8,8 +8,8 @@ Commercial use requires written permission and negotiated payment terms.
 #pragma once
 
 //= INCLUDES =====================
-#include "../core/SpartanObject.h"
-#include "RHI_Descriptor.h"
+#include "../../core/SpartanObject.h"
+#include "../RHI_Descriptor.h"
 #include <vector>
 //================================
 
@@ -22,7 +22,7 @@ namespace spartan
         RHI_DescriptorSet(const std::vector<RHI_DescriptorWithBinding>& descriptors, RHI_DescriptorSetLayout* layout, const char* name);
         ~RHI_DescriptorSet() = default;
 
-        bool IsReferingToResource(void* resource) const;
+        bool ReferencesResource(void* resource) const;
         void* GetResource() const { return m_resource; }
         uint64_t GetLastUsedFrame() const { return m_last_used_frame; }
         void MarkUsed(uint64_t frame)     { m_last_used_frame = frame; }
