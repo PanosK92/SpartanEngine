@@ -395,56 +395,72 @@ void WorldViewer::OnTickVisible()
         return;
     }
 
-    prepare_entity_filter();
-    DrawToolbar();
-
-    ImGui::Separator();
-    ImGui::BeginChild("##hierarchy_tree", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
-    TreeShow();
-
-    // on left click, select entity but only on release
-    if (ImGui::IsMouseReleased(0))
+    const bool is_in_game_mode = Engine::IsFlagSet(EngineMode::Playing);
+    if (is_in_game_mode)
     {
-        // make sure that the mouse was released while on the same entity
-        if (Entity* entity_clicked_raw = entity_clicked)
+        entity_clicked   = nullptr;
+        entity_hovered   = nullptr;
+        rename_entity_id = 0;
+
+        ImGui::TextColored(ImGui::Style::color_warning, "Disabled during playback");
+        ImGui::TextDisabled("Stop playback to interact with the hierarchy.");
+        ImGui::Separator();
+    }
+
+    prepare_entity_filter();
+
+    ImGui::BeginDisabled(is_in_game_mode);
+    {
+        DrawToolbar();
+
+        ImGui::Separator();
+        ImGui::BeginChild("##hierarchy_tree", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
+        TreeShow();
+
+        // on left click, select entity but only on release
+        if (!is_in_game_mode && ImGui::IsMouseReleased(0))
         {
-            if (Entity* entity_hovered_raw = entity_hovered)
+            // make sure that the mouse was released while on the same entity
+            if (Entity* entity_clicked_raw = entity_clicked)
             {
-                if (entity_hovered_raw->GetObjectId() == entity_clicked_raw->GetObjectId())
+                if (Entity* entity_hovered_raw = entity_hovered)
                 {
-                    // mark that selection came from user click (no scroll needed)
-                    selection_from_click = true;
-
-                    bool ctrl_held  = Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right);
-                    bool shift_held = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Shift_Right);
-
-                    if (shift_held && entity_shift_anchor)
+                    if (entity_hovered_raw->GetObjectId() == entity_clicked_raw->GetObjectId())
                     {
-                        // shift+click: select range between anchor and clicked entity
-                        SelectEntitiesInRange(entity_shift_anchor, entity_clicked_raw);
-                    }
-                    else if (ctrl_held)
-                    {
-                        // ctrl+click: toggle selection
-                        if (Camera* camera = World::GetCamera())
+                        // mark that selection came from user click (no scroll needed)
+                        selection_from_click = true;
+
+                        bool ctrl_held  = Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right);
+                        bool shift_held = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Shift_Right);
+
+                        if (shift_held && entity_shift_anchor)
                         {
-                            spartan::Selection::ToggleSelection(entity_clicked_raw);
+                            // shift+click: select range between anchor and clicked entity
+                            SelectEntitiesInRange(entity_shift_anchor, entity_clicked_raw);
                         }
-                    }
-                    else
-                    {
-                        SetSelectedEntity(entity_clicked_raw);
-                        entity_shift_anchor = entity_clicked_raw;
+                        else if (ctrl_held)
+                        {
+                            // ctrl+click: toggle selection
+                            if (Camera* camera = World::GetCamera())
+                            {
+                                spartan::Selection::ToggleSelection(entity_clicked_raw);
+                            }
+                        }
+                        else
+                        {
+                            SetSelectedEntity(entity_clicked_raw);
+                            entity_shift_anchor = entity_clicked_raw;
+                        }
                     }
                 }
 
+                entity_clicked = nullptr;
             }
-
-            entity_clicked = nullptr;
         }
-    }
 
-    ImGui::EndChild();
+        ImGui::EndChild();
+    }
+    ImGui::EndDisabled();
 }
 
 void WorldViewer::DrawToolbar()
@@ -485,8 +501,7 @@ void WorldViewer::TreeShow()
         ImVec2(cursor_pos.x + content_avail.x, window_pos.y + ImGui::GetWindowSize().y)
     );
 
-    bool is_in_game_mode = Engine::IsFlagSet(EngineMode::Playing);
-    ImGui::BeginDisabled(is_in_game_mode);
+    const bool is_in_game_mode = Engine::IsFlagSet(EngineMode::Playing);
     {
         static vector<Entity*> root_entities;
         World::GetRootEntities(root_entities);
@@ -512,10 +527,9 @@ void WorldViewer::TreeShow()
             ImGui::TextDisabled("%s", message);
         }
     }
-    ImGui::EndDisabled();
 
     // window-level drop target for reordering (gaps between entities), unparenting (empty space), or prefab instantiation
-    if (ImGui::BeginDragDropTargetCustom(window_rect, ImGui::GetID("##WorldViewerDropTarget")))
+    if (!is_in_game_mode && ImGui::BeginDragDropTargetCustom(window_rect, ImGui::GetID("##WorldViewerDropTarget")))
     {
         // handle entity reordering/unparenting
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
@@ -601,14 +615,17 @@ void WorldViewer::TreeShow()
     }
 
     // draw reorder insertion line indicator
-    if (reorder_target_entity && ImGui::GetDragDropPayload() && ImGui::GetDragDropPayload()->IsDataType("ENTITY"))
+    if (!is_in_game_mode && reorder_target_entity && ImGui::GetDragDropPayload() && ImGui::GetDragDropPayload()->IsDataType("ENTITY"))
     {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         ImU32 line_color = ImGui::GetColorU32(ImGuiCol_DragDropTarget);
         dl->AddLine(ImVec2(reorder_line_x_min, reorder_line_y), ImVec2(reorder_line_x_max, reorder_line_y), line_color, 2.0f);
     }
 
-    OnTreeEnd();
+    if (!is_in_game_mode)
+    {
+        OnTreeEnd();
+    }
 }
 
 void WorldViewer::OnTreeBegin()
@@ -657,6 +674,8 @@ void WorldViewer::TreeAddEntity(Entity* entity)
         node_flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
+    const bool is_in_game_mode = Engine::IsFlagSet(EngineMode::Playing);
+
     // handle selection (multi-select support)
     Camera* camera = World::GetCamera();
     const bool is_selected  = camera && spartan::Selection::IsSelected(entity);
@@ -664,7 +683,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     const bool first_time_selected = is_selected && primary_selected && primary_selected->GetObjectId() != last_selected_entity_id;
 
     // auto-expand for selected descendants
-    if (primary_selected && primary_selected->IsDescendantOf(entity) && primary_selected->GetObjectId() != last_selected_entity_id)
+    if (!is_in_game_mode && primary_selected && primary_selected->IsDescendantOf(entity) && primary_selected->GetObjectId() != last_selected_entity_id)
     {
         ImGui::SetNextItemOpen(true);
     }
@@ -702,13 +721,13 @@ void WorldViewer::TreeAddEntity(Entity* entity)
         const float open       = ImGui::EditorUi::animate(ImGui::GetID(node_id) ^ 0xc4e7a0u, is_node_open ? 1.0f : 0.0f, 16.0f);
         const ImVec2 center    = ImVec2(IM_ROUND(tree_node_min.x + ImGui::GetStyle().FramePadding.x + font_size * 0.5f), IM_ROUND((tree_node_min.y + tree_node_max.y) * 0.5f));
         const float hit        = font_size * 0.8f;
-        const bool hovered     = ImGui::IsMouseHoveringRect(ImVec2(center.x - hit, tree_node_min.y), ImVec2(center.x + hit, tree_node_max.y));
+        const bool hovered     = !is_in_game_mode && ImGui::IsMouseHoveringRect(ImVec2(center.x - hit, tree_node_min.y), ImVec2(center.x + hit, tree_node_max.y));
         const ImVec4 tint      = hovered ? ImGui::Style::color_text : ImGui::Style::color_text_muted;
         ImGui::EditorUi::draw_chevron(dl, center, font_size * 0.5f, open, tint);
     }
 
     // scroll to selected entity, but only if selection was programmatic (not from user click)
-    if (first_time_selected && primary_selected)
+    if (!is_in_game_mode && first_time_selected && primary_selected)
     {
         if (!selection_from_click)
         {
@@ -740,7 +759,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     // check for reorder position when dragging (top/bottom edge of row)
     bool is_in_reorder_zone = false;
     const ImGuiPayload* active_payload = ImGui::GetDragDropPayload();
-    if (active_payload && active_payload->IsDataType("ENTITY"))
+    if (!is_in_game_mode && active_payload && active_payload->IsDataType("ENTITY"))
     {
         ImVec2 mouse_pos = ImGui::GetMousePos();
         float row_top = tree_node_min.y;
@@ -773,7 +792,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     }
 
     // check hover on content area only (but not when in reorder zone during drag)
-    bool is_row_hovered = ImGui::IsMouseHoveringRect(content_min, content_max, true);
+    bool is_row_hovered = !is_in_game_mode && ImGui::IsMouseHoveringRect(content_min, content_max, true);
     if (is_row_hovered && !is_in_reorder_zone)
     {
         entity_hovered = entity;
@@ -806,7 +825,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     ImGui::InvisibleButton("row_btn", ImVec2(content_width, button_height));
 
     // drag source
-    if (!Engine::IsFlagSet(EngineMode::Playing))
+    if (!is_in_game_mode)
     {
         if (ImGui::BeginDragDropSource())
         {
@@ -819,7 +838,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 
     // drop target - handles parenting (middle zone) and prefab instantiation
     // reordering is handled by window-level drop target in the gaps
-    if (ImGui::BeginDragDropTarget())
+    if (!is_in_game_mode && ImGui::BeginDragDropTarget())
     {
         // entity parenting
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
@@ -882,9 +901,12 @@ void WorldViewer::TreeAddEntity(Entity* entity)
             content_min.y + y_offset
         );
         ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
+        const ImVec4 icon_tint = is_in_game_mode
+            ? ImGui::EditorUi::alpha(ImGui::Style::color_text_muted, 0.75f)
+            : (is_selected ? ImGui::Style::lerp(component_to_tint(entity), ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f) : ImGui::EditorUi::alpha(component_to_tint(entity), 0.85f));
         dl->AddImage(reinterpret_cast<ImTextureID>(entry.texture), icon_min, icon_max,
             ImVec2(entry.uv_min.x, entry.uv_min.y), ImVec2(entry.uv_max.x, entry.uv_max.y),
-            ImGui::EditorUi::color(is_selected ? ImGui::Style::lerp(component_to_tint(entity), ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f) : ImGui::EditorUi::alpha(component_to_tint(entity), 0.85f)));
+            ImGui::EditorUi::color(icon_tint));
         next_x                = icon_max.x + ImGui::GetStyle().ItemSpacing.x;
     }
 
@@ -899,7 +921,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     {
         // muted label so runtime-only entities are easy to spot
         const ImU32 text_color = is_transient
-            ? IM_COL32(150, 150, 160, 200)
+            ? ImGui::EditorUi::color(ImVec4(150.0f / 255.0f, 150.0f / 255.0f, 160.0f / 255.0f, 200.0f / 255.0f))
             : ImGui::GetColorU32(ImGuiCol_Text);
         dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, text_color, display_name.c_str());
     }

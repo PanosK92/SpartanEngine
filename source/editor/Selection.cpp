@@ -397,6 +397,11 @@ namespace spartan
 
     void Selection::Pick(Camera& camera)
     {
+        if (Engine::IsFlagSet(EngineMode::Playing))
+        {
+            return;
+        }
+
         struct PublishOnExit { ~PublishOnExit() { Selection::Publish(); } } publish;
         if (!Input::GetMouseIsInViewport())
         {

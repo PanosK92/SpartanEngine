@@ -404,7 +404,10 @@ void Viewport::OnTickVisible()
     // let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());
 
+    const bool is_playing = Engine::IsFlagSet(EngineMode::Playing);
+
     // material drag-preview, runs before the drop handlers so the drop just clears state without reverting
+    if (!is_playing)
     {
         const char* drag_path  = peek_material_drag_path();
         bool        drag_active = drag_path != nullptr;
@@ -437,67 +440,75 @@ void Viewport::OnTickVisible()
 
         preview_drag_was_active = drag_active;
     }
+    else if (preview_drag_was_active)
+    {
+        revert_material_preview();
+        preview_drag_was_active = false;
+    }
 
     // handle model drop
-    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
+    if (!is_playing)
     {
-        if (payload->path[0] != '\0')
+        if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
         {
-            m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(payload->path);
-        }
-    }
-
-    // handle prefab drop
-    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Prefab))
-    {
-        if (payload->path[0] != '\0')
-        {
-            const char* file_path = payload->path;
-            Entity* entity        = World::CreateEntity();
-            string name           = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-            entity->SetObjectName(name);
-            if (Prefab::LoadFromFile(file_path, entity))
+            if (payload->path[0] != '\0')
             {
-                entity->SetPrefabFilePath(file_path);
-
-                // snapshot the loaded hierarchy as the prefab base so later edits persist as overrides
-                entity->MarkPrefabBaseline();
-                editor_history::Created(entity);
-            }
-            else
-            {
-                World::RemoveEntity(entity);
+                m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(payload->path);
             }
         }
-    }
 
-    // handle material drop, the preview already applied the material to the hovered mesh,
-    // so commit just means clearing the preview state without restoring the original
-    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
-    {
-        if (preview_entity_id != 0)
+        // handle prefab drop
+        if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Prefab))
         {
-            if (auto entity = World::GetEntityById(preview_entity_id))
+            if (payload->path[0] != '\0')
             {
-                auto render = entity->GetComponent<Render>();
-                if (render && render->GetMaterial())
+                const char* file_path = payload->path;
+                Entity* entity        = World::CreateEntity();
+                string name           = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+                entity->SetObjectName(name);
+                if (Prefab::LoadFromFile(file_path, entity))
                 {
-                    auto material = std::static_pointer_cast<Material>(render->GetMaterial()->shared_from_this());
-                    revert_material_preview();
-                    editor_history::EntityScope history(entity, true);
-                    render->SetMaterial(material);
+                    entity->SetPrefabFilePath(file_path);
+
+                    // snapshot the loaded hierarchy as the prefab base so later edits persist as overrides
+                    entity->MarkPrefabBaseline();
+                    editor_history::Created(entity);
+                }
+                else
+                {
+                    World::RemoveEntity(entity);
                 }
             }
-            clear_preview_state();
         }
-        else if (payload->path[0] != '\0')
+
+        // handle material drop, the preview already applied the material to the hovered mesh,
+        // so commit just means clearing the preview state without restoring the original
+        if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
         {
-            // fallback for the unlikely case the drop fires without a prior hover frame
-            if (Entity* hovered = pick_entity_under_cursor())
+            if (preview_entity_id != 0)
             {
-                if (Render* render = hovered->GetComponent<Render>())
+                if (auto entity = World::GetEntityById(preview_entity_id))
                 {
-                    render->SetMaterial(payload->path);
+                    auto render = entity->GetComponent<Render>();
+                    if (render && render->GetMaterial())
+                    {
+                        auto material = std::static_pointer_cast<Material>(render->GetMaterial()->shared_from_this());
+                        revert_material_preview();
+                        editor_history::EntityScope history(entity, true);
+                        render->SetMaterial(material);
+                    }
+                }
+                clear_preview_state();
+            }
+            else if (payload->path[0] != '\0')
+            {
+                // fallback for the unlikely case the drop fires without a prior hover frame
+                if (Entity* hovered = pick_entity_under_cursor())
+                {
+                    if (Render* render = hovered->GetComponent<Render>())
+                    {
+                        render->SetMaterial(payload->path);
+                    }
                 }
             }
         }
@@ -506,7 +517,7 @@ void Viewport::OnTickVisible()
     Camera* camera = World::GetCamera();
 
     // double-click to focus on entity
-    if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && !overlay_controls.hovered && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
+    if (!is_playing && camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && !overlay_controls.hovered && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
         spartan::Selection::Pick(*camera);
         m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(spartan::Selection::GetSelectedEntity());
@@ -516,7 +527,7 @@ void Viewport::OnTickVisible()
         }
     }
     // mouse picking (with multi-select via Ctrl handled in Pick())
-    else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && !overlay_controls.hovered && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
+    else if (!is_playing && camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && !overlay_controls.hovered && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
         spartan::Selection::Pick(*camera);
 

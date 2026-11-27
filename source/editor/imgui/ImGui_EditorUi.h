@@ -48,7 +48,7 @@ namespace ImGui::EditorUi
 
     inline ImU32 color(const ImVec4& value)
     {
-        return ImGui::ColorConvertFloat4ToU32(value);
+        return ImGui::GetColorU32(value);
     }
 
     inline ImVec4 axis_color(const uint32_t index)
