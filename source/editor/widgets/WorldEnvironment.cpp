@@ -406,7 +406,7 @@ void WorldEnvironment::OnTickVisible()
         {
             snprintf(summary, sizeof(summary), "clouds %.0f%% \xC2\xB7 dry \xC2\xB7 %.0f m/s", cloud_coverage * 100.0f, wind);
         }
-        if (layout::fold("Weather", true, summary))
+        if (auto _fold = layout::fold_scope("Weather", true, summary))
         {
             if (property_percent("Clouds", &cloud_coverage, "0 is a clear sky, 100 is overcast"))
             {
@@ -450,7 +450,7 @@ void WorldEnvironment::OnTickVisible()
         {
             snprintf(summary, sizeof(summary), "%.0f\xC3\x97 speed", environment_settings.time_scale);
         }
-        if (layout::fold("Time", true, summary))
+        if (auto _fold = layout::fold_scope("Time", true, summary))
         {
             if (property_toggle("Animate", &day_night_cycle, "move the sun on its own, otherwise it stays where you put it"))
             {
@@ -489,7 +489,7 @@ void WorldEnvironment::OnTickVisible()
             fabs(environment_settings.longitude), environment_settings.longitude >= 0.0 ? 'E' : 'W',
             year, month, day
         );
-        if (layout::fold("Place and date", false, summary))
+        if (auto _fold = layout::fold_scope("Place and date", false, summary))
         {
             bool environment_changed = false;
             int date[3] = { year, month, day };
@@ -530,7 +530,7 @@ void WorldEnvironment::OnTickVisible()
     // climate is set once per location, so it stays folded
     {
         snprintf(summary, sizeof(summary), "%.1f \xC2\xB0""C mean", environment_settings.annual_temperature);
-        if (layout::fold("Climate", false, summary))
+        if (auto _fold = layout::fold_scope("Climate", false, summary))
         {
             bool climate_changed = false;
             climate_changed |= property_slider("Annual mean", &environment_settings.annual_temperature, -70.0f, 50.0f, "%.1f \xC2\xB0""C", "sea level average temperature over a year, a configurable climate rather than recorded weather");

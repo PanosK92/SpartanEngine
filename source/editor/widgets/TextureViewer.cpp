@@ -1020,7 +1020,7 @@ namespace
         snprintf(size_text, sizeof(size_text), "%u \xC3\x97 %u", tex->GetWidth(), tex->GetHeight());
         if (tex->GetType() == spartan::RHI_Texture_Type::Type3D)
             snprintf(size_text, sizeof(size_text), "%u x %u x %u", tex->GetWidth(), tex->GetHeight(), tex->GetDepth());
-        if (editor_ui::layout::fold("Info", true, size_text))
+        if (auto _fold = editor_ui::layout::fold_scope("Info", true, size_text))
         {
             char text[96];
             editor_ui::property_text("Size", size_text);
@@ -1050,7 +1050,7 @@ namespace
         {
             char summary[48];
             snprintf(summary, sizeof(summary), "mip %d, slice %d", s.mip_level, s.array_level);
-            if (editor_ui::layout::fold("Level", true, summary))
+            if (auto _fold = editor_ui::layout::fold_scope("Level", true, summary))
             {
                 draw_level_slider("Mip", &s.mip_level, max_mip, "This texture has a single mip");
                 draw_level_slider("Slice", &s.array_level, max_slice, "This texture has a single slice");
@@ -1060,12 +1060,12 @@ namespace
         const uint32_t shown = (s.channel_r ? 1 : 0) + (s.channel_g ? 1 : 0) + (s.channel_b ? 1 : 0) + (s.channel_a ? 1 : 0);
         char channel_summary[24];
         snprintf(channel_summary, sizeof(channel_summary), "%s", shown == 4 ? "all shown" : (shown == 0 ? "none shown" : "filtered"));
-        if (editor_ui::layout::fold("Channels", true, channel_summary))
+        if (auto _fold = editor_ui::layout::fold_scope("Channels", true, channel_summary))
         {
             draw_channel_toggles();
         }
 
-        if (editor_ui::layout::fold("Display"))
+        if (auto _fold = editor_ui::layout::fold_scope("Display"))
         {
             editor_ui::property_toggle("Gamma correct",  &s.gamma_correct,  "Apply the sRGB curve when displaying, turn off for data textures such as normals or masks");
             editor_ui::property_toggle("Remap signed",   &s.pack,           "Map -1..1 to 0..1, useful for normal or velocity textures");
@@ -1077,7 +1077,7 @@ namespace
         // debug writer control lives here since it drives what this specific render target shows
         if (tex == spartan::Renderer::GetRenderTarget(spartan::Renderer_RenderTarget::debug_output))
         {
-            if (editor_ui::layout::fold("Debug output"))
+            if (auto _fold = editor_ui::layout::fold_scope("Debug output"))
             {
                 draw_debug_writer();
             }

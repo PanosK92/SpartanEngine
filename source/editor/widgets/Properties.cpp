@@ -164,7 +164,18 @@ namespace
     Entity*  pending_removal_owner = nullptr;
 
     // component content tracking
-    bool component_content_active = false;
+    struct CardAnimState
+    {
+        float open          = 0.0f;
+        float full_height   = 0.0f;
+        int   last_frame    = -1000;
+        bool  initialized   = false;
+    };
+    unordered_map<ImGuiID, CardAnimState> card_anim_states;
+    bool    component_content_active    = false;
+    bool    component_content_animating = false;
+    ImGuiID component_content_anim_id   = 0;
+    float   component_content_slide_up  = 0.0f;
 
     // one line of state drawn on the next component header, so a closed component still reports itself
     string next_component_summary;
@@ -324,6 +335,29 @@ namespace
         next_component_summary.clear();
         next_component_summary_tint = ImVec4(0, 0, 0, 0);
 
+        // snappy accordion animation (snaps on first sight or after switching inspected entity)
+        const ImGuiID card_anim_id = ImGui::GetID("##card_anim");
+        const int frame            = ImGui::GetFrameCount();
+        CardAnimState& card_state  = card_anim_states[card_anim_id];
+        const float target         = is_expanded ? 1.0f : 0.0f;
+        if (!card_state.initialized || (frame - card_state.last_frame) > 2)
+        {
+            card_state.open        = target;
+            card_state.initialized = true;
+        }
+        else if (card_state.open != target)
+        {
+            const float dt   = clamp(ImGui::GetIO().DeltaTime, 0.0f, 0.05f);
+            card_state.open += (target - card_state.open) * (1.0f - expf(-20.0f * dt));
+            if (fabsf(target - card_state.open) < 0.004f)
+            {
+                card_state.open = target;
+            }
+        }
+        card_state.last_frame     = frame;
+        const float open          = card_state.open;
+        const float est_full_h    = card_state.full_height;
+
         ImVec2 header_min     = ImGui::GetItemRectMin();
         ImVec2 header_max     = ImGui::GetItemRectMax();
         {
@@ -332,7 +366,6 @@ namespace
             const float font_size  = ImGui::GetFontSize();
             const float chevron    = font_size * 0.55f;
             const bool hovered     = ImGui::IsItemHovered();
-            const float open       = ImGui::EditorUi::animate(ImGui::GetID("##chevron"), is_expanded ? 1.0f : 0.0f, 16.0f);
             const ImVec2 arrow_pos = ImVec2(IM_ROUND(header_min.x + 10.0f * dpi), IM_ROUND(center_y - chevron * 0.5f));
             const ImVec4 arrow_tint = hovered || is_expanded ? ImGui::Style::color_text : ImGui::Style::color_text_muted;
             ImGui::EditorUi::draw_chevron(draw_list, ImVec2(arrow_pos.x + chevron * 0.5f, center_y), chevron, open, arrow_tint);
@@ -406,10 +439,15 @@ namespace
             }
         }
 
-        // wrap expanded content in styled child region
-        if (is_expanded)
+        // wrap expanded or animating content in styled child region
+        const bool animating    = open > 0.004f && open < 0.996f;
+        const bool draw_content = is_expanded || animating;
+        if (draw_content)
         {
-            component_content_active = true;
+            component_content_active    = true;
+            component_content_animating = animating;
+            component_content_anim_id   = card_anim_id;
+            component_content_slide_up  = 0.0f;
 
             // content sits on the panel itself, so the value wells are the darkest thing in it
             const ImVec4 content_bg = ImVec4(0, 0, 0, 0);
@@ -417,20 +455,57 @@ namespace
             ImGui::PushStyleColor(ImGuiCol_ChildBg, content_bg);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(design::spacing_lg, design::spacing_md));
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(design::spacing_sm, design::spacing_sm));
-            ImGui::BeginChild(("##content_" + string(name)).c_str(), ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
+
+            if (animating)
+            {
+                const float fallback_h        = est_full_h > 0.0f ? est_full_h : 120.0f * dpi;
+                const float visible_h         = max(1.0f, IM_ROUND(fallback_h * open));
+                ImGuiWindowFlags child_flags  = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+                if (!is_expanded)
+                {
+                    child_flags |= ImGuiWindowFlags_NoInputs;
+                }
+                ImGui::BeginChild(("##content_" + string(name)).c_str(), ImVec2(0.0f, visible_h), ImGuiChildFlags_AlwaysUseWindowPadding, child_flags);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * clamp(open * 1.15f, 0.0f, 1.0f));
+                component_content_slide_up = (1.0f - open) * min(8.0f * dpi, fallback_h * 0.15f);
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - component_content_slide_up);
+            }
+            else
+            {
+                ImGui::BeginChild(("##content_" + string(name)).c_str(), ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
+            }
         }
 
-        return is_expanded;
+        return draw_content;
     }
 
     void component_end()
     {
         if (component_content_active)
         {
+            ImGuiWindow* child = ImGui::GetCurrentWindow();
+            if (component_content_animating)
+            {
+                const float measured_h = max(1.0f, (child->DC.CursorMaxPos.y - (child->Pos.y - component_content_slide_up)) + child->WindowPadding.y);
+                card_anim_states[component_content_anim_id].full_height = measured_h;
+                ImGui::PopStyleVar();
+            }
+            else
+            {
+                const float h = ImGui::GetWindowHeight();
+                if (h > 1.0f)
+                {
+                    card_anim_states[component_content_anim_id].full_height = h;
+                }
+            }
+
             ImGui::EndChild();
             ImGui::PopStyleVar(2);
             ImGui::PopStyleColor();
-            component_content_active = false;
+            component_content_active    = false;
+            component_content_animating = false;
+            component_content_anim_id   = 0;
+            component_content_slide_up  = 0.0f;
         }
         if (expand_forcing_folds)
         {
@@ -1722,7 +1797,7 @@ void Properties::ShowLight(spartan::Light* light) const
             float volumetric_distance = light->GetVolumetricDistance();
             char summary[96];
             snprintf(summary, sizeof(summary), "%.0f \xC2\xB7 %.0f \xC2\xB7 %.0f m", draw_distance, shadow_distance, volumetric_distance);
-            if (layout::fold("Culling distances", false, summary))
+            if (auto _fold = layout::fold_scope("Culling distances", false, summary))
             {
                 if (property_float("Visible up to", &draw_distance, 1.0f, 0.0f, 10000.0f, "beyond this distance from the camera the light is switched off entirely", "%.0f m"))
                 {
@@ -1919,7 +1994,7 @@ void Properties::ShowRender(spartan::Render* render) const
         {
             char summary[48];
             snprintf(summary, sizeof(summary), "%s copies", format::grouped(instances).c_str());
-            if (layout::fold("Instances", false, summary))
+            if (auto _fold = layout::fold_scope("Instances", false, summary))
             {
                 layout::note("Every copy shares this mesh and material and is drawn in one batch. The copies are placed by whatever generated them, so they are listed here read only.", ImGui::Style::color_text_muted);
                 if (render->HasInstancing())
@@ -2088,14 +2163,14 @@ void Properties::ShowPhysics(Physics* body) const
             int locked = freeze_pos_x + freeze_pos_y + freeze_pos_z + freeze_rot_x + freeze_rot_y + freeze_rot_z;
             char summary[48];
             snprintf(summary, sizeof(summary), locked == 0 ? "free" : "%d axes locked", locked);
-            if (layout::fold("Axis locks", locked > 0, summary))
+            if (auto _fold = layout::fold_scope("Axis locks", locked > 0, summary))
             {
                 property_axes("Position", &freeze_pos_x, &freeze_pos_y, &freeze_pos_z, "stop the body from moving along a world axis, lock Y to keep something on the ground plane");
                 property_axes("Rotation", &freeze_rot_x, &freeze_rot_y, &freeze_rot_z, "stop the body from turning around a world axis, lock X and Z to keep a character upright");
             }
 
             snprintf(summary, sizeof(summary), center_of_mass == Vector3::Zero ? "defaults" : "custom center of mass");
-            if (layout::fold("Advanced", false, summary))
+            if (auto _fold = layout::fold_scope("Advanced", false, summary))
             {
                 property_slider("Rolling friction", &friction_rolling, 0.0f, 1.0f, "%.3f", "resistance to rolling, keeps balls and wheels from rolling forever");
                 property_vector3("Center of mass", center_of_mass, "offset from the entity origin, lower it to make a vehicle harder to tip over");
@@ -2114,7 +2189,7 @@ void Properties::ShowPhysics(Physics* body) const
 
             char summary[48];
             snprintf(summary, sizeof(summary), "%.0f%% stiff \xC2\xB7 %.0f iterations", cloth_stiffness * 100.0f, cloth_iterations);
-            if (layout::fold("Cloth", true, summary))
+            if (auto _fold = layout::fold_scope("Cloth", true, summary))
             {
                 property_percent("Stiffness", &cloth_stiffness, "how much the fabric resists stretching per iteration, silk is low, canvas is high");
                 property_percent("Bending", &cloth_bending, "how much the fabric resists folding, silk drapes in fine folds, canvas in broad ones");
@@ -2615,7 +2690,7 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             add("sheen", sheen);
             add("subsurface", subsurface);
 
-            if (layout::fold("Layers", !active.empty(), active.empty() ? "none" : active.c_str()))
+            if (auto _fold = layout::fold_scope("Layers", !active.empty(), active.empty() ? "none" : active.c_str()))
             {
                 float value = clearcoat;
                 if (property_percent("Clearcoat", &value, "A thin glossy varnish over the base, like car paint or lacquered wood."))
@@ -2698,7 +2773,7 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             if (coat > 0.0f)  active += (active.empty() ? "" : " \xC2\xB7 ") + string("tinted coat");
             if (film > 0.0f)  active += (active.empty() ? "" : " \xC2\xB7 ") + string("iridescence");
 
-            if (layout::fold("Car paint", in_use, active.empty() ? "off" : active.c_str()))
+            if (auto _fold = layout::fold_scope("Car paint", in_use, active.empty() ? "off" : active.c_str()))
             {
                 float value = flake;
                 if (property_percent("Metal flakes", &value, "Tiny sparkling flakes under the coat that glint as the view moves."))
@@ -2779,7 +2854,7 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             const float ior = material->GetProperty(MaterialProperty::Ior);
             char summary[64];
             snprintf(summary, sizeof(summary), "IOR %.2f \xC2\xB7 %s", ior, ior_word(ior));
-            if (layout::fold("Glass", material->IsTransparent(), summary))
+            if (auto _fold = layout::fold_scope("Glass", material->IsTransparent(), summary))
             {
                 float value = ior;
                 char format[64];
@@ -2830,7 +2905,7 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             }
 
             const bool placed = has_override || tiling.x != 1.0f || tiling.y != 1.0f || offset.x != 0.0f || offset.y != 0.0f || rotation_index != 0 || invert_x || invert_y || world_space_uv;
-            if (layout::fold("Texture placement", placed, summary))
+            if (auto _fold = layout::fold_scope("Texture placement", placed, summary))
             {
                 const auto axis_pair = [](const char* label, Vector2* value, const float speed, const char* tooltip)
                 {
@@ -2923,7 +2998,7 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             uint32_t cull_mode_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::CullMode));
             static vector<string> cull_summaries = { "one sided", "inside out", "two sided" };
             const char* cull_summary = cull_mode_index < cull_summaries.size() ? cull_summaries[cull_mode_index].c_str() : "";
-            if (layout::fold("Drawing", false, cull_summary))
+            if (auto _fold = layout::fold_scope("Drawing", false, cull_summary))
             {
                 static vector<string> cull_labels = { "One sided", "Inside out", "Two sided" };
                 if (property_segmented("Faces", cull_labels, &cull_mode_index, "One sided hides the back of every triangle, the usual choice. Inside out hides the front, for skyboxes and interiors seen from within. Two sided draws both, for leaves, cloth and paper."))
@@ -2954,7 +3029,7 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             {
                 summary += " \xC2\xB7 coated";
             }
-            if (layout::fold("Ground contact", false, summary.c_str()))
+            if (auto _fold = layout::fold_scope("Ground contact", false, summary.c_str()))
             {
                 float value = blend;
                 if (property_slider("Blend height", &value, 0.0f, 4.0f, value <= 0.0f ? "%.2f  \xC2\xB7  off" : "%.2f\xC3\x97", "How far the terrain's ground creeps up where this surface sinks into it, relative to the object's size. 0 opts out."))
@@ -3090,7 +3165,7 @@ void Properties::ShowCamera(Camera* camera) const
         // exposure, one switch for who is in charge and the controls that follow from it
         static vector<string> exposure_modes = { "Manual", "Automatic" };
         const char* exposure_summary = exposure_mode_index == static_cast<uint32_t>(CameraExposureMode::automatic) ? "metered" : "physical camera";
-        if (layout::fold("Exposure", true, exposure_summary))
+        if (auto _fold = layout::fold_scope("Exposure", true, exposure_summary))
         {
             property_segmented("Mode", exposure_modes, &exposure_mode_index, "manual uses aperture, shutter and iso, automatic meters the scene like a phone camera");
             const bool automatic = exposure_mode_index == static_cast<uint32_t>(CameraExposureMode::automatic);
@@ -3209,7 +3284,7 @@ void Properties::ShowCamera(Camera* camera) const
             }
         }
 
-        if (layout::fold("Control", true, first_person_control_enabled ? "first person" : "fixed"))
+        if (auto _fold = layout::fold_scope("Control", true, first_person_control_enabled ? "first person" : "fixed"))
         {
             property_toggle("First person", &first_person_control_enabled, "fly with WASD and look with the mouse while holding the right button");
             property_toggle("Physical body", &physical_body_enabled, "animate the player body and head motion when mounted on a character controller");
@@ -3491,7 +3566,7 @@ void Properties::ShowText3D(spartan::Text3D* text_3d) const
             text_3d->SetWeight(weight);
         }
 
-        if (layout::fold("Spacing and detail", false))
+        if (auto _fold = layout::fold_scope("Spacing and detail", false))
         {
             if (property_slider("Letter spacing", &letter_spacing, -10.0f, 100.0f, "%.3f m", "Extra space between letters, negative pulls them together."))
             {
@@ -3627,7 +3702,7 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         bool attachment_active = source_spline_id != 0 && attach_mode != 0;
         static const char* attachment_mode_words[] = { "none", "centerline", "left edge", "right edge", "left outer", "right outer" };
         const char* attachment_summary = attachment_active && attach_mode < 6 ? attachment_mode_words[attach_mode] : "none";
-        if (layout::fold("Attachment", attachment_active, attachment_summary))
+        if (auto _fold = layout::fold_scope("Attachment", attachment_active, attachment_summary))
         {
             // build a list of entities that have a spline component (excluding self)
             const vector<Entity*>& all_entities_attach = World::GetEntities();
@@ -3697,7 +3772,7 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         {
             char points_summary[64];
             snprintf(points_summary, sizeof(points_summary), "%u \xC2\xB7 %.0f m", point_count, point_count >= 2 ? spline->GetLength() : 0.0f);
-            if (layout::fold("Control points", true, points_summary))
+            if (auto _fold = layout::fold_scope("Control points", true, points_summary))
             {
                 char stat_buf[64];
                 if (point_count >= 2)
@@ -3770,7 +3845,7 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             property_text("Length", attached_length_buf);
         }
 
-        if (layout::fold("Generation", true, mesh_enabled ? "road mesh" : "guide path only"))
+        if (auto _fold = layout::fold_scope("Generation", true, mesh_enabled ? "road mesh" : "guide path only"))
         {
             static vector<string> spline_mode_names = { "Path", "Road" };
             uint32_t spline_mode = mesh_enabled ? 1 : 0;
@@ -3976,7 +4051,7 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         char inst_summary_buffer[64];
         snprintf(inst_summary_buffer, sizeof(inst_summary_buffer), "every %.1f m%s", inst_spacing, inst_mirror ? ", both sides" : "");
         const string inst_summary = inst_summary_buffer;
-        if (layout::fold("Instancing", inst_template_id != 0, inst_template_id != 0 ? inst_summary.c_str() : "off"))
+        if (auto _fold = layout::fold_scope("Instancing", inst_template_id != 0, inst_template_id != 0 ? inst_summary.c_str() : "off"))
         {
             // template entity picker (any entity in the world that is not the spline itself)
             const vector<Entity*>& all_entities = World::GetEntities();
@@ -4432,7 +4507,7 @@ void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
             follower->SetFlipForward(flip);
         }
 
-        if (layout::fold("Wheels", animate_wheels, animate_wheels ? "animated" : "off"))
+        if (auto _fold = layout::fold_scope("Wheels", animate_wheels, animate_wheels ? "animated" : "off"))
         {
             if (property_toggle("Animate wheels", &animate_wheels, "Rolls every wheel with speed and steers the front ones into turns. Wheels are the child entities named tire or wheel."))
             {
@@ -4696,7 +4771,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         {
             uint32_t placement = ambient ? 2 : (is_3d ? 1 : 0);
             static const char* placement_summaries[] = { "2D, everywhere", "3D, in the world", "ambience" };
-            if (layout::fold("Space", true, placement_summaries[placement]))
+            if (auto _fold = layout::fold_scope("Space", true, placement_summaries[placement]))
             {
                 static vector<string> placement_labels = { "2D", "3D", "Ambience" };
                 if (property_segmented("Placement", placement_labels, &placement, "2D plays at the same loudness everywhere, for music and interface sounds. 3D is heard from the entity's position. Ambience is a stereo bed faded by the Volume on this entity."))
@@ -4794,7 +4869,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
                 snprintf(summary, sizeof(summary), "off");
             }
 
-            if (layout::fold("Reverb", reverb_enabled, summary))
+            if (auto _fold = layout::fold_scope("Reverb", reverb_enabled, summary))
             {
                 property_toggle("Enabled", &reverb_enabled, "Adds the reflections of a space around the sound.");
 
@@ -4917,7 +4992,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                 }
             }
 
-            if (layout::fold("Corners", false))
+            if (auto _fold = layout::fold_scope("Corners", false))
             {
                 Vector3 min = volume->GetBoundingBox().GetMin();
                 Vector3 max = volume->GetBoundingBox().GetMax();
@@ -4935,7 +5010,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
             const auto& options = volume->GetOptions();
             char summary[48];
             snprintf(summary, sizeof(summary), "%zu active", options.size());
-            if (layout::fold("Render overrides", true, options.empty() ? "none" : summary))
+            if (auto _fold = layout::fold_scope("Render overrides", true, options.empty() ? "none" : summary))
             {
                 auto pretty = [](const string& cvar_name)
                 {
@@ -5071,7 +5146,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
             char summary[64];
             snprintf(summary, sizeof(summary), reverb_enabled ? "%.1f s tail" : "off", tail);
 
-            if (layout::fold("Reverb", reverb_enabled, summary))
+            if (auto _fold = layout::fold_scope("Reverb", reverb_enabled, summary))
             {
                 if (property_toggle("Enabled", &reverb_enabled, "Sounds inside the box get the reflections of a space this size, overriding their own reverb during play."))
                 {
@@ -5092,7 +5167,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
             char summary[64];
             snprintf(summary, sizeof(summary), "%s \xC2\xB7 %.0f m fade", boundary ? "shoreline" : "whole area", fade);
 
-            if (layout::fold("Soundscape", false, summary))
+            if (auto _fold = layout::fold_scope("Soundscape", false, summary))
             {
                 if (property_slider("Fade distance", &fade, 0.01f, 10000.0f, "%.1f m", "How far the ambience takes to fade in from the edge, in local meters.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
                 {
@@ -5314,7 +5389,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             }
         }
 
-        if (layout::fold("Emission", true))
+        if (auto _fold = layout::fold_scope("Emission", true))
         {
             property_slider("Rate", &emission_rate, 0.0f, 10000.0f, "%.0f per second", "Particles born every second.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
 
@@ -5342,7 +5417,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             }
         }
 
-        if (layout::fold("Motion", true))
+        if (auto _fold = layout::fold_scope("Motion", true))
         {
             property_slider("Lifetime", &lifetime, 0.01f, 60.0f, "%.2f s", "How long each particle lives.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
 
@@ -5383,7 +5458,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             add("wake", wake_strength);
             add("churn", churn_strength);
 
-            if (layout::fold("Forces", false, active.empty() ? "none" : active.c_str()))
+            if (auto _fold = layout::fold_scope("Forces", false, active.empty() ? "none" : active.c_str()))
             {
                 property_slider("Turbulence", &turbulence_strength, 0.0f, 10.0f, "%.2f", "Swirling procedural motion that breaks up straight paths.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
                 property_slider("Vortex", &vortex_strength, -400.0f, 400.0f, vortex_strength == 0.0f ? "%.1f  \xC2\xB7  off" : (vortex_strength > 0.0f ? "%.1f  \xC2\xB7  counterclockwise" : "%.1f  \xC2\xB7  clockwise"), "Orbiting pull around an axis, scripts drive its center and axis, a spinning tire for example.");
@@ -5403,7 +5478,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             }
         }
 
-        if (layout::fold("Look", true))
+        if (auto _fold = layout::fold_scope("Look", true))
         {
             property_slider("Start size", &start_size, 0.001f, 10.0f, "%.3f m", "Diameter at birth.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
             property_slider("End size", &end_size, 0.0f, 10.0f, end_size <= 0.0f ? "%.3f m  \xC2\xB7  shrinks away" : "%.3f m", "Diameter at death, particles grow or shrink between the two.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
@@ -5475,7 +5550,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
                 snprintf(summary, sizeof(summary), "single image");
             }
 
-            if (layout::fold("Texture", texture != nullptr, summary))
+            if (auto _fold = layout::fold_scope("Texture", texture != nullptr, summary))
             {
                 auto texture_setter = [particle_system](spartan::RHI_Texture* texture_new)
                 {

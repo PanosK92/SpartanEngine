@@ -22,7 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ====================
+#include <algorithm>
+#include <cmath>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "ImGui_Extension.h"
 #include "source/imgui_stdlib.h"
@@ -189,6 +192,195 @@ namespace editor_ui
 
         // 1 opens and 0 closes every fold drawn this frame, -1 leaves them to the user
         inline int fold_force = -1;
+
+        struct FoldAnimState
+        {
+            float open          = 0.0f;
+            float full_height   = 0.0f;
+            int   last_frame    = -1000;
+            bool  initialized   = false;
+        };
+
+        inline std::unordered_map<ImGuiID, FoldAnimState>& fold_anim_states()
+        {
+            static std::unordered_map<ImGuiID, FoldAnimState> states;
+            return states;
+        }
+
+        // RAII scope returned by fold_scope() that clips, fades, and slides the fold body smoothly
+        struct FoldScope
+        {
+            bool    active      = false;
+            bool    animating   = false;
+            bool    closing     = false;
+            ImGuiID id          = 0;
+            float   open_anim   = 0.0f;
+            float   slide_up    = 0.0f;
+            float   prev_max_y  = 0.0f;
+            ImVec2  start_pos   = ImVec2(0.0f, 0.0f);
+
+            FoldScope() = default;
+            FoldScope(const FoldScope&) = delete;
+            FoldScope& operator=(const FoldScope&) = delete;
+            FoldScope(FoldScope&& other) noexcept
+                : active(other.active)
+                , animating(other.animating)
+                , closing(other.closing)
+                , id(other.id)
+                , open_anim(other.open_anim)
+                , slide_up(other.slide_up)
+                , prev_max_y(other.prev_max_y)
+                , start_pos(other.start_pos)
+            {
+                other.active    = false;
+                other.animating = false;
+                other.closing   = false;
+            }
+
+            explicit operator bool() const { return active; }
+
+            ~FoldScope()
+            {
+                if (!active)
+                {
+                    return;
+                }
+
+                ImGuiWindow* window    = ImGui::GetCurrentWindow();
+                const float measured_h = std::max(0.0f, ImGui::GetCursorScreenPos().y - (start_pos.y - slide_up));
+                if (measured_h > 0.0f)
+                {
+                    fold_anim_states()[id].full_height = measured_h;
+                }
+
+                if (animating)
+                {
+                    if (closing)
+                    {
+                        ImGui::PopItemFlag();
+                    }
+                    ImGui::PopStyleVar();
+                    ImGui::PopClipRect();
+
+                    const float full_h    = fold_anim_states()[id].full_height > 0.0f ? fold_anim_states()[id].full_height : measured_h;
+                    const float visible_h = IM_ROUND(full_h * open_anim);
+                    window->DC.CursorMaxPos.y      = std::max(prev_max_y, start_pos.y + visible_h);
+                    window->DC.CursorPosPrevLine.y = start_pos.y + visible_h;
+                    ImGui::SetCursorScreenPos(ImVec2(start_pos.x, start_pos.y + visible_h));
+                }
+            }
+        };
+
+        // animated collapsible group inside a component: use as `if (auto _fold = layout::fold_scope(...)) { ... }`
+        inline FoldScope fold_scope(const char* title, const bool default_open = true, const char* summary = nullptr)
+        {
+            ImGui::PushID(title);
+
+            ImGuiStorage* storage = ImGui::GetStateStorage();
+            const ImGuiID id      = ImGui::GetID("##fold_state");
+            if (fold_force >= 0)
+            {
+                storage->SetBool(id, fold_force == 1);
+            }
+            bool open = storage->GetBool(id, default_open);
+
+            ImGui::Dummy(ImVec2(0, design::spacing_xs));
+            const float width  = ImGui::GetContentRegionAvail().x;
+            const float height = ImGui::GetTextLineHeight() + ImGui::EditorUi::scaled(8.0f);
+            if (ImGui::InvisibleButton("##fold", ImVec2(width, height)))
+            {
+                open = !open;
+                storage->SetBool(id, open);
+            }
+            const bool hovered = ImGui::IsItemHovered();
+            const ImVec2 min   = ImGui::GetItemRectMin();
+            const ImVec2 max   = ImGui::GetItemRectMax();
+
+            // snappy accordion animation (snaps on first sight or after switching inspected entity/tab)
+            const int frame      = ImGui::GetFrameCount();
+            auto& states         = fold_anim_states();
+            FoldAnimState& state = states[id];
+            const float target   = open ? 1.0f : 0.0f;
+            if (!state.initialized || (frame - state.last_frame) > 2)
+            {
+                state.open        = target;
+                state.initialized = true;
+            }
+            else if (state.open != target)
+            {
+                const float dt = std::clamp(ImGui::GetIO().DeltaTime, 0.0f, 0.05f);
+                state.open    += (target - state.open) * (1.0f - expf(-20.0f * dt));
+                if (fabsf(target - state.open) < 0.004f)
+                {
+                    state.open = target;
+                }
+            }
+            state.last_frame      = frame;
+            const float open_anim = state.open;
+            const float est_full  = state.full_height;
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            const float center_y  = IM_ROUND((min.y + max.y) * 0.5f);
+            const float chevron   = ImGui::GetFontSize() * 0.45f;
+            const ImVec4 tint     = hovered ? ImGui::Style::color_text : ImGui::Style::color_text_muted;
+            ImGui::EditorUi::draw_chevron(draw_list, ImVec2(min.x + chevron * 0.5f, center_y), chevron, open_anim, tint);
+
+            const float label_x = min.x + chevron + ImGui::EditorUi::scaled(8.0f);
+            const float label_w = ImGui::EditorUi::draw_micro_label(draw_list, ImVec2(label_x, min.y), height, title, tint, Editor::font_bold);
+
+            float rule_end = max.x;
+            if (summary && summary[0] != '\0')
+            {
+                const ImVec2 size = ImGui::CalcTextSize(summary);
+                rule_end          = max.x - size.x - ImGui::EditorUi::scaled(8.0f);
+                draw_list->AddText(ImVec2(max.x - size.x, IM_ROUND(center_y - size.y * 0.5f)), ImGui::EditorUi::color(ImGui::Style::color_text_faint), summary);
+            }
+
+            const float rule_start = label_x + label_w + ImGui::EditorUi::scaled(10.0f);
+            if (rule_end > rule_start)
+            {
+                draw_list->AddLine(ImVec2(rule_start, center_y), ImVec2(rule_end, center_y), ImGui::EditorUi::color(ImGui::Style::color_border), 1.0f);
+            }
+
+            ImGui::PopID();
+
+            FoldScope scope;
+            const bool animating = open_anim > 0.004f && open_anim < 0.996f;
+            if (!open && !animating)
+            {
+                return scope;
+            }
+
+            ImGuiWindow* window = ImGui::GetCurrentWindow();
+            scope.active     = true;
+            scope.animating  = animating;
+            scope.closing    = !open;
+            scope.id         = id;
+            scope.open_anim  = open_anim;
+            scope.start_pos  = ImGui::GetCursorScreenPos();
+            scope.prev_max_y = window->DC.CursorMaxPos.y;
+
+            if (animating)
+            {
+                const float est_h  = est_full > 0.0f ? est_full : ImGui::EditorUi::scaled(72.0f);
+                const float clip_h = IM_ROUND(est_h * open_anim);
+                scope.slide_up     = (1.0f - open_anim) * std::min(ImGui::EditorUi::scaled(8.0f), est_h * 0.20f);
+
+                ImGui::PushClipRect(
+                    ImVec2(window->ClipRect.Min.x, scope.start_pos.y),
+                    ImVec2(window->ClipRect.Max.x, scope.start_pos.y + clip_h),
+                    true
+                );
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * std::clamp(open_anim * 1.15f, 0.0f, 1.0f));
+                if (scope.closing)
+                {
+                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                }
+                ImGui::SetCursorScreenPos(ImVec2(scope.start_pos.x, scope.start_pos.y - scope.slide_up));
+            }
+
+            return scope;
+        }
 
         // a collapsible group inside a component, a tracked title with a hairline and a summary
         // that keeps reporting what the group holds while it is closed
