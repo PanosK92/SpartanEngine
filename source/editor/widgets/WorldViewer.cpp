@@ -29,6 +29,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Properties.h"
+#include <unordered_map>
 #include <unordered_set>
 SP_WARNINGS_OFF
 #include "../imgui/source/imgui_stdlib.h"
@@ -67,6 +68,18 @@ namespace
     float reorder_line_y          = 0.0f;    // y position to draw the insertion line
     float reorder_line_x_min      = 0.0f;    // x start of insertion line
     float reorder_line_x_max      = 0.0f;    // x end of insertion line
+
+    // tree expand/collapse animation state per parent entity
+    struct TreeAnimState
+    {
+        float open          = 0.0f;
+        float full_height   = 0.0f;
+        bool initialized    = false;
+        uint64_t last_frame = 0;
+    };
+    unordered_map<uint64_t, TreeAnimState> tree_anim_states;
+    int subtree_closing_depth = 0;
+    uint64_t tree_frame_index = 0;
 
     // helper function to collect all active entities in tree display order (depth-first)
     bool should_show_in_tree(Entity* entity)
@@ -630,8 +643,29 @@ void WorldViewer::TreeShow()
 
 void WorldViewer::OnTreeBegin()
 {
-    entity_hovered = nullptr;
+    entity_hovered        = nullptr;
     reorder_target_entity = nullptr;
+    subtree_closing_depth = 0;
+    ++tree_frame_index;
+
+    if (entity_count == 0)
+    {
+        tree_anim_states.clear();
+    }
+    else if ((tree_frame_index % 120) == 0 && !tree_anim_states.empty())
+    {
+        for (auto it = tree_anim_states.begin(); it != tree_anim_states.end(); )
+        {
+            if (tree_frame_index - it->second.last_frame > 120)
+            {
+                it = tree_anim_states.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
 }
 
 void WorldViewer::OnTreeEnd()
@@ -706,10 +740,37 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 0));
 
     // start tree node
-    const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
-    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "%s", "");
+    const uint64_t entity_id = entity->GetObjectId();
+    const void* node_id      = reinterpret_cast<void*>(entity_id);
+    const bool is_node_open  = ImGui::TreeNodeEx(node_id, node_flags, "%s", "");
 
     ImGui::PopStyleColor(4);
+
+    // update snappy accordion expand/collapse animation (0 = closed, 1 = open)
+    float open_anim = is_node_open ? 1.0f : 0.0f;
+    if (has_children)
+    {
+        TreeAnimState& anim = tree_anim_states[entity_id];
+        anim.last_frame     = tree_frame_index;
+        const float target  = is_node_open ? 1.0f : 0.0f;
+        if (!anim.initialized || entity_filter.IsActive())
+        {
+            anim.open        = target;
+            anim.initialized = true;
+        }
+        else if (anim.open != target)
+        {
+            const float dt = clamp(ImGui::GetIO().DeltaTime, 0.0f, 0.05f);
+            anim.open     += (target - anim.open) * (1.0f - expf(-20.0f * dt));
+            if (fabsf(target - anim.open) < 0.004f)
+            {
+                anim.open = target;
+            }
+        }
+        open_anim = anim.open;
+    }
+
+    const bool is_interactive = !is_in_game_mode && subtree_closing_depth == 0;
 
     // get the full tree node rect (including arrow) for hover detection
     ImVec2 tree_node_min = ImGui::GetItemRectMin();
@@ -718,12 +779,11 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     if (has_children)
     {
         const float font_size  = ImGui::GetFontSize();
-        const float open       = ImGui::EditorUi::animate(ImGui::GetID(node_id) ^ 0xc4e7a0u, is_node_open ? 1.0f : 0.0f, 16.0f);
         const ImVec2 center    = ImVec2(IM_ROUND(tree_node_min.x + ImGui::GetStyle().FramePadding.x + font_size * 0.5f), IM_ROUND((tree_node_min.y + tree_node_max.y) * 0.5f));
         const float hit        = font_size * 0.8f;
-        const bool hovered     = !is_in_game_mode && ImGui::IsMouseHoveringRect(ImVec2(center.x - hit, tree_node_min.y), ImVec2(center.x + hit, tree_node_max.y));
+        const bool hovered     = is_interactive && ImGui::IsMouseHoveringRect(ImVec2(center.x - hit, tree_node_min.y), ImVec2(center.x + hit, tree_node_max.y));
         const ImVec4 tint      = hovered ? ImGui::Style::color_text : ImGui::Style::color_text_muted;
-        ImGui::EditorUi::draw_chevron(dl, center, font_size * 0.5f, open, tint);
+        ImGui::EditorUi::draw_chevron(dl, center, font_size * 0.5f, open_anim, tint);
     }
 
     // scroll to selected entity, but only if selection was programmatic (not from user click)
@@ -759,7 +819,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     // check for reorder position when dragging (top/bottom edge of row)
     bool is_in_reorder_zone = false;
     const ImGuiPayload* active_payload = ImGui::GetDragDropPayload();
-    if (!is_in_game_mode && active_payload && active_payload->IsDataType("ENTITY"))
+    if (is_interactive && active_payload && active_payload->IsDataType("ENTITY"))
     {
         ImVec2 mouse_pos = ImGui::GetMousePos();
         float row_top = tree_node_min.y;
@@ -792,7 +852,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     }
 
     // check hover on content area only (but not when in reorder zone during drag)
-    bool is_row_hovered = !is_in_game_mode && ImGui::IsMouseHoveringRect(content_min, content_max, true);
+    bool is_row_hovered = is_interactive && ImGui::IsMouseHoveringRect(content_min, content_max, true);
     if (is_row_hovered && !is_in_reorder_zone)
     {
         entity_hovered = entity;
@@ -825,7 +885,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     ImGui::InvisibleButton("row_btn", ImVec2(content_width, button_height));
 
     // drag source
-    if (!is_in_game_mode)
+    if (is_interactive)
     {
         if (ImGui::BeginDragDropSource())
         {
@@ -838,7 +898,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 
     // drop target - handles parenting (middle zone) and prefab instantiation
     // reordering is handled by window-level drop target in the gaps
-    if (!is_in_game_mode && ImGui::BeginDragDropTarget())
+    if (is_interactive && ImGui::BeginDragDropTarget())
     {
         // entity parenting
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
@@ -943,16 +1003,79 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 
     // note: selection is handled in OnTickVisible on mouse release to avoid double-selection
 
-    // recursively add children
-    if (is_node_open)
+    // recursively add children with snappy accordion slide + fade animation
+    const bool animating     = has_children && open_anim > 0.004f && open_anim < 0.996f;
+    const bool draw_children = has_children && (is_node_open || animating);
+    if (draw_children)
     {
-        if (has_children)
+        if (!is_node_open)
         {
-            for (const auto& child : children)
+            // match TreeNodeEx indent and ID stack so nested expanded children stay intact while collapsing
+            ImGui::TreePush(node_id);
+            ++subtree_closing_depth;
+        }
+
+        const float prev_full_h      = tree_anim_states[entity_id].full_height;
+        ImGuiWindow* window          = ImGui::GetCurrentWindow();
+        const ImVec2 children_start  = ImGui::GetCursorScreenPos();
+        const float prev_cursor_max  = window->DC.CursorMaxPos.y;
+        const float max_anim_h       = max(window->Size.y + row_height * 2.0f, 360.0f);
+        float slide_up               = 0.0f;
+
+        if (animating)
+        {
+            const float est_full_h = prev_full_h > 0.0f ? prev_full_h : static_cast<float>(children.size()) * row_height;
+            const float clip_h     = IM_ROUND(min(est_full_h, max_anim_h) * open_anim);
+            slide_up               = (1.0f - open_anim) * min(ImGui::EditorUi::scaled(8.0f), est_full_h * 0.20f);
+
+            ImGui::PushClipRect(
+                ImVec2(window->ClipRect.Min.x, children_start.y),
+                ImVec2(window->ClipRect.Max.x, children_start.y + clip_h),
+                true
+            );
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * clamp(open_anim * 1.15f, 0.0f, 1.0f));
+            ImGui::SetCursorScreenPos(ImVec2(children_start.x, children_start.y - slide_up));
+        }
+
+        bool early_stopped = false;
+        for (const auto& child : children)
+        {
+            TreeAddEntity(World::GetEntityById(child->GetObjectId()));
+            if (animating && prev_full_h > 0.0f && ImGui::GetCursorScreenPos().y > children_start.y + max_anim_h + row_height)
             {
-                TreeAddEntity(World::GetEntityById(child->GetObjectId()));
+                early_stopped = true;
+                break;
             }
         }
+
+        const float measured_h = max(0.0f, ImGui::GetCursorScreenPos().y - (children_start.y - slide_up));
+        float full_h           = prev_full_h;
+        if (!early_stopped && measured_h > 0.0f)
+        {
+            tree_anim_states[entity_id].full_height = measured_h;
+            full_h = measured_h;
+        }
+
+        if (animating)
+        {
+            ImGui::PopStyleVar();
+            ImGui::PopClipRect();
+
+            const float effective_h = full_h > 0.0f ? full_h : measured_h;
+            const float visible_h   = IM_ROUND(min(effective_h, max_anim_h) * open_anim);
+            window->DC.CursorMaxPos.y      = max(prev_cursor_max, children_start.y + visible_h);
+            window->DC.CursorPosPrevLine.y = children_start.y + visible_h;
+            ImGui::SetCursorScreenPos(ImVec2(children_start.x, children_start.y + visible_h));
+        }
+
+        if (!is_node_open)
+        {
+            --subtree_closing_depth;
+        }
+        ImGui::TreePop();
+    }
+    else if (is_node_open)
+    {
         ImGui::TreePop();
     }
 }
