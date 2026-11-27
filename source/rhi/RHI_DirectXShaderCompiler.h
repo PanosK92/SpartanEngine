@@ -26,7 +26,10 @@ namespace spartan
     class DirectXShaderCompiler
     {
     public:
-        // null on failure, the caller owns the result and must release it
-        static IDxcBlob* Compile(const std::string& source, std::vector<std::string>& arguments, const std::string& name);
+    // null on failure, the caller owns the result and must release it.
+    // when allow_fast_pass is true, an uncached shader compiles quickly with -Od without
+    // overwriting the optimized cache and reports it via out_used_fast_pass so a background
+    // optimization pass can follow up.
+    static IDxcBlob* Compile(const std::string& source, std::vector<std::string>& arguments, const std::string& name, bool allow_fast_pass = false, bool* out_used_fast_pass = nullptr);
     };
 }

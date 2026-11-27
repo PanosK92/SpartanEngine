@@ -2813,6 +2813,13 @@ namespace spartan
 
     void Profiler::DrawCompilationProgress()
     {
+        // when the editor chrome is visible, the menu bar hosts the compilation status pill in unused titlebar space
+        const bool editor_ui_visible = Engine::IsFlagSet(EngineMode::EditorVisible) && (!Engine::IsHeadless() || Engine::HasArgument("--headless-ui"));
+        if (editor_ui_visible)
+        {
+            return;
+        }
+
         using math::Vector2;
         namespace col = overlay_color;
 
@@ -2820,16 +2827,25 @@ namespace spartan
         {
             const char* label;
             RHI_Compiler::Progress progress;
+            Color bar_color;
         };
-        array<Row, 2> rows;
+        array<Row, 4> rows;
         uint32_t row_count = 0;
-        if (!RHI_Compiler::Shaders().IsIdle())
+        if (!RHI_Compiler::Shaders().IsPriorityIdle())
         {
-            rows[row_count++] = { "COMPILING SHADERS", RHI_Compiler::Shaders().GetProgress() };
+            rows[row_count++] = { "PASS 1 - FAST SHADERS", RHI_Compiler::Shaders().GetProgress(), col::warn };
         }
-        if (!RHI_Compiler::Pipelines().IsIdle())
+        if (!RHI_Compiler::Shaders().IsBackgroundIdle())
         {
-            rows[row_count++] = { "COMPILING PIPELINES", RHI_Compiler::Pipelines().GetProgress() };
+            rows[row_count++] = { "PASS 2 - OPTIMIZING SHADERS", RHI_Compiler::Shaders().GetBackgroundProgress(), col::accent };
+        }
+        if (!RHI_Compiler::Pipelines().IsPriorityIdle())
+        {
+            rows[row_count++] = { "PASS 1 - FAST PIPELINES", RHI_Compiler::Pipelines().GetProgress(), col::warn };
+        }
+        if (!RHI_Compiler::Pipelines().IsBackgroundIdle())
+        {
+            rows[row_count++] = { "PASS 2 - OPTIMIZING PIPELINES", RHI_Compiler::Pipelines().GetBackgroundProgress(), col::accent };
         }
 
         // cache hits and single shader reloads finish within a few frames, only sustained work earns a panel
@@ -2854,17 +2870,18 @@ namespace spartan
             return floor(value * dpi + 0.5f);
         };
 
-        // bottom center, clear of the performance panel and the editor toolbars
+        // tucked into the bottom-right corner so compilation never obstructs the center of the viewport
         const RHI_Viewport& viewport = Renderer::GetViewport();
+        const float margin           = px(16.0f);
         const float padding          = px(12.0f);
-        const float bar_height       = px(4.0f);
+        const float bar_height       = px(3.0f);
         const float row_height       = font_body->GetLineHeight() + px(5.0f) + bar_height;
         const float row_gap          = px(10.0f);
-        const float panel_width      = px(280.0f);
+        const float panel_width      = px(310.0f);
         const float panel_height     = padding * 2.0f + row_height * row_count + row_gap * (row_count - 1);
-        const float panel_x0         = floor((viewport.width - panel_width) * 0.5f);
+        const float panel_x0         = max(margin, viewport.width - margin - panel_width);
         const float panel_x1         = panel_x0 + panel_width;
-        const float panel_y1         = viewport.height - px(28.0f);
+        const float panel_y1         = viewport.height - margin;
         const float panel_y0         = panel_y1 - panel_height;
         const float left             = panel_x0 + padding;
         const float right            = panel_x1 - padding;
@@ -2890,7 +2907,7 @@ namespace spartan
             font_shapes->AddRect(Vector2(left, bar_y0), Vector2(right, bar_y0 + bar_height), col::track);
             if (fraction > 0.0f)
             {
-                font_shapes->AddRect(Vector2(left, bar_y0), Vector2(left + (right - left) * fraction, bar_y0 + bar_height), col::accent);
+                font_shapes->AddRect(Vector2(left, bar_y0), Vector2(left + (right - left) * fraction, bar_y0 + bar_height), row.bar_color);
             }
 
             y += row_height + row_gap;

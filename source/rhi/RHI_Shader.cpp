@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_InputLayout.h"
 #include "RHI_Device.h"
 #include "RHI_Compiler.h"
+#include "../core/Engine.h"
 //=============================
 
 //= NAMESPACES =====
@@ -41,6 +42,10 @@ namespace spartan
         {
             m_compile_task.wait();
         }
+        if (m_optimize_task.valid())
+        {
+            m_optimize_task.wait();
+        }
     }
 
     void RHI_Shader::OwnResource()
@@ -64,8 +69,88 @@ namespace spartan
         snapshot->m_input_layout = m_input_layout;
         snapshot->m_descriptors = m_descriptors;
         snapshot->m_hash = m_hash;
+        snapshot->m_is_fast_pass = m_is_fast_pass;
         snapshot->m_compilation_state = RHI_ShaderCompilationState::Succeeded;
         return snapshot;
+    }
+
+    void RHI_Shader::CompileSync(const RHI_Shader_Type shader_type, const string& file_path, const RHI_Vertex_Type vertex_type, bool allow_fast_pass)
+    {
+        m_input_layout = nullptr;
+        m_descriptors.clear();
+
+        m_shader_type = shader_type;
+        m_vertex_type = vertex_type;
+        if (m_shader_type == RHI_Shader_Type::Vertex)
+        {
+            m_input_layout = make_shared<RHI_InputLayout>();
+        }
+
+        m_object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_file_path   = file_path;
+
+        // load
+        LoadFromDrive(file_path);
+
+        // compile
+        m_compilation_state = RHI_ShaderCompilationState::Compiling;
+        m_allow_fast_pass   = allow_fast_pass;
+        m_is_fast_pass      = false;
+        void* resource      = RHI_Compile();
+        m_rhi_resource      = resource;
+        OwnResource();
+        if (m_rhi_resource && m_is_fast_pass)
+        {
+            // salt fast-pass (-Od) bytecode hash so PSOs automatically rebuild once pass 2 swaps in
+            m_hash = rhi_hash_combine(m_hash, 0xFA57FA57ULL);
+        }
+        m_compilation_state = m_rhi_resource ? RHI_ShaderCompilationState::Succeeded : RHI_ShaderCompilationState::Failed;
+
+        // log failure
+        if (m_compilation_state != RHI_ShaderCompilationState::Succeeded)
+        {
+            string defines_str;
+            for (const auto& define : m_defines)
+            {
+                if (!defines_str.empty())
+                {
+                    defines_str += ", ";
+                }
+
+                defines_str += define.first + " = " + define.second;
+            }
+
+            if (defines_str.empty())
+            {
+                SP_LOG_ERROR("Failed to compile shader \"%s\".", m_object_name.c_str());
+            }
+            else
+            {
+                SP_LOG_ERROR("Failed to compile shader \"%s\" with definitions \"%s\".", m_object_name.c_str(), defines_str.c_str());
+            }
+        }
+    }
+
+    void RHI_Shader::QueueOptimizationPass()
+    {
+        if (m_reloading.exchange(true))
+        {
+            return;
+        }
+
+        shared_ptr<RHI_Shader> staged = make_shared<RHI_Shader>();
+        staged->m_defines             = m_defines;
+        const RHI_Shader_Type type    = m_shader_type;
+        const string path             = m_file_path;
+        const RHI_Vertex_Type vtype   = m_vertex_type;
+
+        m_optimize_task = RHI_Compiler::Shaders().SubmitBackground([this, staged, type, path, vtype]()
+        {
+            // pass 2 compiles with full optimization and writes the result to the disk cache
+            staged->CompileSync(type, path, vtype, false);
+            m_reload       = staged;
+            m_reload_ready = true;
+        });
     }
 
     void RHI_Shader::Compile(const RHI_Shader_Type shader_type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
@@ -79,21 +164,22 @@ namespace spartan
             return;
         }
 
+        const bool allow_fast_pass = async && !Engine::HasArgument("--bake-shaders") && !Engine::IsStartupSmokeTest();
+
         // a live shader must never be seen half compiled: clearing its reflection or changing its hash
         // mid frame caches pipelines built from the old module under the new hash, which then never rebuild
         if (m_compilation_state == RHI_ShaderCompilationState::Succeeded && m_rhi_resource)
         {
-            if (m_reloading)
+            if (m_reloading.exchange(true))
             {
                 return;
             }
 
             shared_ptr<RHI_Shader> staged = make_shared<RHI_Shader>();
             staged->m_defines = m_defines;
-            m_reloading       = true;
-            auto reload = [this, staged, shader_type, file_path, vertex_type]()
+            auto reload = [this, staged, shader_type, file_path, vertex_type, allow_fast_pass]()
             {
-                staged->Compile(shader_type, file_path, false, vertex_type);
+                staged->CompileSync(shader_type, file_path, vertex_type, allow_fast_pass);
                 m_reload       = staged;
                 m_reload_ready = true;
             };
@@ -109,61 +195,22 @@ namespace spartan
             return;
         }
 
-        // clear
-        m_input_layout = nullptr;
-        m_descriptors.clear();
-
-        m_shader_type = shader_type;
-        m_vertex_type = vertex_type;
-        if (m_shader_type == RHI_Shader_Type::Vertex)
-        {
-            m_input_layout = make_shared<RHI_InputLayout>();
-        }
-
         // compile
         {
             m_compilation_state = RHI_ShaderCompilationState::Compiling;
+            m_shader_type       = shader_type;
+            m_vertex_type       = vertex_type;
             m_object_name       = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
             m_file_path         = file_path;
 
             // resolving the includes is part of the job, done serially it dominated startup
-            auto compile = [this, shader_type, async, file_path]()
+            auto compile = [this, shader_type, file_path, vertex_type, allow_fast_pass]()
             {
-                // time compilation
-                const Stopwatch timer;
+                CompileSync(shader_type, file_path, vertex_type, allow_fast_pass);
 
-                // load
-                LoadFromDrive(file_path);
-
-                // compile
-                m_compilation_state = RHI_ShaderCompilationState::Compiling;
-                void* resource      = RHI_Compile();
-                m_rhi_resource      = resource;
-                OwnResource();
-                m_compilation_state = m_rhi_resource ? RHI_ShaderCompilationState::Succeeded : RHI_ShaderCompilationState::Failed;
-
-                // log failure
-                if (m_compilation_state != RHI_ShaderCompilationState::Succeeded)
+                if (m_compilation_state == RHI_ShaderCompilationState::Succeeded && m_is_fast_pass)
                 {
-                    string defines_str;
-                    for (const auto& define : m_defines)
-                    {
-                        if (!defines_str.empty())
-                        {
-                            defines_str += ", ";
-                        }
-
-                        defines_str += define.first + " = " + define.second;
-                    }
-              
-                    if (defines_str.empty())
-                    {
-                        SP_LOG_ERROR("Failed to compile shader \"%s\".", m_object_name.c_str());
-                    }
-                    else
-                    {
-                        SP_LOG_ERROR("Failed to compile shader \"%s\" with definitions \"%s\".", m_object_name.c_str(), defines_str.c_str());
-                    }
+                    QueueOptimizationPass();
                 }
             };
 
@@ -209,9 +256,16 @@ namespace spartan
             m_input_layout          = move(staged->m_input_layout);
             m_preprocessed_source   = move(staged->m_preprocessed_source);
             m_hash                  = staged->m_hash;
+            m_is_fast_pass          = staged->m_is_fast_pass;
         }
 
         m_reloading = false;
+
+        // if a hot-reload applied a fast pass 1 preview, queue the optimized pass 2 in the background
+        if (!m_reload_failed && m_is_fast_pass)
+        {
+            QueueOptimizationPass();
+        }
     }
 
     void RHI_Shader::PreprocessIncludeDirectives(const string& file_path, set<string>& processed_files)

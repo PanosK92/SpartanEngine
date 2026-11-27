@@ -20,6 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <wrl/client.h>
 #include <cstring>
 #include <cmath>
+#include <mutex>
 //===================================
 
 using namespace std;
@@ -41,14 +42,30 @@ namespace spartan
     // shaders reading sv_viewid require the pso to declare view instancing, which only the stream api exposes
     static bool view_instancing_supported()
     {
-        static int supported = -1;
-        if (supported == -1)
+        static std::once_flag init_flag;
+        static bool supported = false;
+        std::call_once(init_flag, []()
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3 = {};
             const bool queried = SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3)));
-            supported = (queried && options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED) ? 1 : 0;
+            supported = queried && options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
+        });
+        return supported;
+    }
+
+    // ID3D12PipelineLibrary load/store calls are serialized across parallel pipeline workers
+    static std::mutex g_pipeline_library_mutex;
+
+    static bool is_fast_pass_pso(const RHI_PipelineState& state)
+    {
+        for (const RHI_Shader* shader : state.shaders)
+        {
+            if (shader && shader->IsFastPass())
+            {
+                return true;
+            }
         }
-        return supported == 1;
+        return false;
     }
 
     // pso stream subobject wrapper, replaces the CD3DX12 helpers which are not vendored
@@ -147,9 +164,11 @@ namespace spartan
         pso_hash_to_name(state.GetHash(), pso_name);
 
         void* resource = nullptr;
-        ID3D12PipelineLibrary* lib = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
+        const bool allow_library   = !is_fast_pass_pso(state);
+        ID3D12PipelineLibrary* lib = allow_library ? static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache()) : nullptr;
         if (lib && d3d12_pipeline_library::can_load())
         {
+            std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
             HRESULT hr_load = lib->LoadComputePipeline(pso_name, &desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
             if (SUCCEEDED(hr_load))
             {
@@ -165,6 +184,7 @@ namespace spartan
         }
         else if (lib && resource)
         {
+            std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
             lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
         }
         pipeline->SetRhiResource(resource);
@@ -355,7 +375,8 @@ namespace spartan
         pso_hash_to_name(state.GetHash(), pso_name);
 
         void* resource = nullptr;
-        ID3D12PipelineLibrary* lib = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
+        const bool allow_library   = !is_fast_pass_pso(state);
+        ID3D12PipelineLibrary* lib = allow_library ? static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache()) : nullptr;
 
         // mesh shader pipelines require a dedicated stream with an ms subobject
         if (state.HasMeshShaders())
@@ -395,6 +416,7 @@ namespace spartan
             Microsoft::WRL::ComPtr<ID3D12PipelineLibrary1> lib1;
             if (lib && SUCCEEDED(lib->QueryInterface(IID_PPV_ARGS(&lib1))) && d3d12_pipeline_library::can_load())
             {
+                std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
                 if (SUCCEEDED(lib1->LoadPipeline(pso_name, &stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)))))
                 {
                     pipeline->SetRhiResource(resource);
@@ -409,6 +431,7 @@ namespace spartan
             }
             else if (lib && resource)
             {
+                std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
                 lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
             }
             pipeline->SetRhiResource(resource);
@@ -451,6 +474,7 @@ namespace spartan
             Microsoft::WRL::ComPtr<ID3D12PipelineLibrary1> lib1;
             if (lib && SUCCEEDED(lib->QueryInterface(IID_PPV_ARGS(&lib1))) && d3d12_pipeline_library::can_load())
             {
+                std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
                 if (SUCCEEDED(lib1->LoadPipeline(pso_name, &stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)))))
                 {
                     pipeline->SetRhiResource(resource);
@@ -465,6 +489,7 @@ namespace spartan
             }
             else if (lib && resource)
             {
+                std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
                 lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
             }
             pipeline->SetRhiResource(resource);
@@ -478,6 +503,7 @@ namespace spartan
 
         if (lib && d3d12_pipeline_library::can_load())
         {
+            std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
             HRESULT hr_load = lib->LoadGraphicsPipeline(pso_name, &desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
             if (SUCCEEDED(hr_load))
             {
@@ -493,6 +519,7 @@ namespace spartan
         }
         else if (lib && resource)
         {
+            std::lock_guard<std::mutex> lock(g_pipeline_library_mutex);
             lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
         }
         pipeline->SetRhiResource(resource);
@@ -524,14 +551,12 @@ namespace spartan
 
     static ID3D12RootSignature* get_or_create_bindless_root_signature()
     {
+        static std::once_flag init_flag;
         static ID3D12RootSignature* s_root_signature = nullptr;
-        if (s_root_signature)
+        std::call_once(init_flag, []()
         {
-            return s_root_signature;
-        }
-
-        constexpr uint32_t param_count = 11;
-        D3D12_ROOT_PARAMETER1 params[param_count] = {};
+            constexpr uint32_t param_count = 11;
+            D3D12_ROOT_PARAMETER1 params[param_count] = {};
 
         // root signature 1.1 lets each range declare how volatile its descriptors and data are
         // everything here stays fully volatile, which is exactly what 1.0 implied, because the engine
@@ -704,7 +729,7 @@ namespace spartan
         if (d3d12_caps::GetHighestRootSignatureVersion() < D3D_ROOT_SIGNATURE_VERSION_1_1)
         {
             SP_LOG_ERROR("Root signature 1.1 is unavailable, the bindless root signature cannot be built");
-            return nullptr;
+            return;
         }
 
         D3D12_VERSIONED_ROOT_SIGNATURE_DESC root_sig_desc = {};
@@ -730,7 +755,7 @@ namespace spartan
             {
                 signature_blob->Release();
             }
-            return nullptr;
+            return;
         }
 
         ID3D12RootSignature* layout = nullptr;
@@ -752,6 +777,7 @@ namespace spartan
 
         // cache it, the static holds the original reference so the signature outlives every pipeline that shares it
         s_root_signature = layout;
+        });
         return s_root_signature;
     }
 

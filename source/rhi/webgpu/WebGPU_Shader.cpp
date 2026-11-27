@@ -941,7 +941,7 @@ namespace spartan
                 }
             }
 
-            IDxcBlob* blob = DirectXShaderCompiler::Compile(source, arguments, m_object_name);
+            IDxcBlob* blob = DirectXShaderCompiler::Compile(source, arguments, m_object_name, m_allow_fast_pass, &m_is_fast_pass);
             if (!blob)
                 return nullptr;
 

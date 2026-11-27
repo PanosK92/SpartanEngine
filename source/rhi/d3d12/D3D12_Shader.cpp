@@ -101,7 +101,7 @@ namespace spartan
         }
 
         // compile
-        if (IDxcBlob* shader_buffer = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments, m_object_name))
+        if (IDxcBlob* shader_buffer = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments, m_object_name, m_allow_fast_pass, &m_is_fast_pass))
         {
             void* bytecode_ptr = shader_buffer->GetBufferPointer();
 

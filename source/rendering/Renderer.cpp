@@ -36,6 +36,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Shader.h"
 #include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_Compiler.h"
+#include "../rhi/RHI_Pipeline.h"
 #include "../rhi/RHI_VendorTechnology.h"
 #include "../rhi/RHI_FrameGeneration.h"
 #include "../rhi/RHI_AccelerationStructure.h"
@@ -82,6 +84,542 @@ namespace spartan
             vector<std::byte> data;
         };
         mutex queued_texture_uploads_mutex;
+
+        namespace pso_prewarm
+        {
+            constexpr uint32_t recipe_magic   = 0x50534F52u; // 'PSOR'
+            constexpr uint32_t recipe_version = 1u;
+            constexpr uint8_t  invalid_slot   = 0xFFu;
+
+            struct GraphicsRecipeFileHeader
+            {
+                uint32_t magic               = recipe_magic;
+                uint32_t version             = recipe_version;
+                uint32_t recipe_size         = 0;
+                uint32_t shader_max          = static_cast<uint32_t>(Renderer_Shader::max);
+                uint32_t render_target_max   = static_cast<uint32_t>(Renderer_RenderTarget::max);
+                uint32_t count               = 0;
+            };
+
+            struct GraphicsPsoRecipe
+            {
+                uint8_t shaders[static_cast<size_t>(RHI_Shader_Type::Max)] = {};
+                uint8_t color_rts[rhi_max_render_target_count]             = {};
+                uint8_t depth_rt                                           = invalid_slot;
+                uint8_t vrs_rt                                             = invalid_slot;
+                uint8_t uses_swapchain                                     = 0;
+                uint8_t rasterizer_mode                                    = 0;
+                uint8_t blend_mode                                         = 0;
+                uint8_t depth_mode                                         = 0;
+                uint8_t cull_mode                                          = 0;
+                uint8_t primitive_topology                                 = 0;
+                uint8_t is_multiview                                       = 0;
+                uint8_t padding                                            = 0;
+                uint32_t render_target_array_index                         = 0;
+                char name[64]                                              = {};
+            };
+
+            struct RtRecipe
+            {
+                const char* name;
+                Renderer_Shader raygen;
+                Renderer_Shader miss;
+                Renderer_Shader hit;
+            };
+
+            constexpr RtRecipe rt_recipes[] =
+            {
+                { "reflections_trace",  Renderer_Shader::reflections_ray_generation_r, Renderer_Shader::reflections_ray_miss_r, Renderer_Shader::reflections_ray_hit_r },
+                { "ray_traced_shadows", Renderer_Shader::shadows_ray_generation_r,     Renderer_Shader::shadows_ray_miss_r,     Renderer_Shader::shadows_ray_hit_r     },
+                { "restir_pt",          Renderer_Shader::restir_pt_ray_generation_r,   Renderer_Shader::restir_pt_ray_miss_r,   Renderer_Shader::restir_pt_ray_hit_r   },
+            };
+
+            mutex recipe_mutex;
+            vector<GraphicsPsoRecipe> graphics_recipes;
+            unordered_set<uint64_t> graphics_recipe_keys;
+            vector<uint64_t> graphics_last_hash;
+            array<uint64_t, static_cast<size_t>(Renderer_Shader::max)> compute_last_hash = {};
+            array<uint64_t, sizeof(rt_recipes) / sizeof(rt_recipes[0])> rt_last_hash     = {};
+            bool recipes_dirty        = false;
+            double last_dirty_time_ms = 0.0;
+
+            string get_recipe_cache_path()
+            {
+                return FileSystem::GetExecutableDirectory() + "/cache/pso_recipes_v1.bin";
+            }
+
+            uint64_t hash_recipe(const GraphicsPsoRecipe& r)
+            {
+                uint64_t h = 14695981039346656037ULL;
+                auto mix = [&](const void* data, size_t size)
+                {
+                    const uint8_t* bytes = static_cast<const uint8_t*>(data);
+                    for (size_t i = 0; i < size; ++i)
+                    {
+                        h ^= static_cast<uint64_t>(bytes[i]);
+                        h *= 1099511628211ULL;
+                    }
+                };
+                mix(r.shaders, sizeof(r.shaders));
+                mix(r.color_rts, sizeof(r.color_rts));
+                mix(&r.depth_rt, sizeof(r.depth_rt));
+                mix(&r.vrs_rt, sizeof(r.vrs_rt));
+                mix(&r.uses_swapchain, sizeof(r.uses_swapchain));
+                mix(&r.rasterizer_mode, sizeof(r.rasterizer_mode));
+                mix(&r.blend_mode, sizeof(r.blend_mode));
+                mix(&r.depth_mode, sizeof(r.depth_mode));
+                mix(&r.cull_mode, sizeof(r.cull_mode));
+                mix(&r.primitive_topology, sizeof(r.primitive_topology));
+                mix(&r.is_multiview, sizeof(r.is_multiview));
+                mix(&r.render_target_array_index, sizeof(r.render_target_array_index));
+                return h;
+            }
+
+            void save_recipes_locked()
+            {
+                if (!recipes_dirty)
+                {
+                    return;
+                }
+
+                const string cache_dir = FileSystem::GetExecutableDirectory() + "/cache";
+                FileSystem::CreateDirectory_(cache_dir);
+
+                ofstream file(get_recipe_cache_path(), ios::binary | ios::trunc);
+                if (!file.is_open())
+                {
+                    return;
+                }
+
+                GraphicsRecipeFileHeader header;
+                header.recipe_size = static_cast<uint32_t>(sizeof(GraphicsPsoRecipe));
+                header.count       = static_cast<uint32_t>(graphics_recipes.size());
+                file.write(reinterpret_cast<const char*>(&header), sizeof(header));
+                if (!graphics_recipes.empty())
+                {
+                    file.write(reinterpret_cast<const char*>(graphics_recipes.data()), static_cast<streamsize>(graphics_recipes.size() * sizeof(GraphicsPsoRecipe)));
+                }
+                recipes_dirty = false;
+            }
+
+            void load_recipes()
+            {
+                lock_guard<mutex> lock(recipe_mutex);
+                graphics_recipes.clear();
+                graphics_recipe_keys.clear();
+                graphics_last_hash.clear();
+                compute_last_hash.fill(0);
+                rt_last_hash.fill(0);
+                recipes_dirty = false;
+
+                ifstream file(get_recipe_cache_path(), ios::binary);
+                if (!file.is_open())
+                {
+                    return;
+                }
+
+                GraphicsRecipeFileHeader header = {};
+                file.read(reinterpret_cast<char*>(&header), sizeof(header));
+                if (
+                    !file                                                                              ||
+                    header.magic != recipe_magic                                                       ||
+                    header.version != recipe_version                                                   ||
+                    header.recipe_size != sizeof(GraphicsPsoRecipe)                                    ||
+                    header.shader_max != static_cast<uint32_t>(Renderer_Shader::max)                   ||
+                    header.render_target_max != static_cast<uint32_t>(Renderer_RenderTarget::max)      ||
+                    header.count > 4096u
+                )
+                {
+                    return;
+                }
+
+                vector<GraphicsPsoRecipe> loaded(header.count);
+                if (header.count > 0)
+                {
+                    file.read(reinterpret_cast<char*>(loaded.data()), static_cast<streamsize>(loaded.size() * sizeof(GraphicsPsoRecipe)));
+                    if (!file)
+                    {
+                        return;
+                    }
+                }
+
+                for (const GraphicsPsoRecipe& recipe : loaded)
+                {
+                    const uint64_t key = hash_recipe(recipe);
+                    if (graphics_recipe_keys.insert(key).second)
+                    {
+                        graphics_recipes.push_back(recipe);
+                    }
+                }
+                graphics_last_hash.assign(graphics_recipes.size(), 0);
+            }
+
+            uint8_t find_shader_slot(const RHI_Shader* shader)
+            {
+                if (!shader)
+                {
+                    return invalid_slot;
+                }
+                const auto& shaders = Renderer::GetShaders();
+                for (size_t i = 0; i < shaders.size(); ++i)
+                {
+                    if (shaders[i].get() == shader)
+                    {
+                        return static_cast<uint8_t>(i);
+                    }
+                }
+                return invalid_slot;
+            }
+
+            uint8_t find_rt_slot(const RHI_Texture* texture)
+            {
+                if (!texture)
+                {
+                    return invalid_slot;
+                }
+                const auto& rts = Renderer::GetRenderTargets();
+                for (size_t i = 0; i < rts.size(); ++i)
+                {
+                    if (rts[i].get() == texture)
+                    {
+                        return static_cast<uint8_t>(i);
+                    }
+                }
+                return invalid_slot;
+            }
+
+            void record_graphics_pso(const RHI_PipelineState& pso)
+            {
+                if (!pso.IsGraphics() || !pso.name)
+                {
+                    return;
+                }
+
+                // imgui is trivial and has its own custom shaders
+                if (strcmp(pso.name, "imgui") == 0)
+                {
+                    return;
+                }
+
+                GraphicsPsoRecipe recipe = {};
+                fill(begin(recipe.shaders), end(recipe.shaders), invalid_slot);
+                fill(begin(recipe.color_rts), end(recipe.color_rts), invalid_slot);
+                recipe.depth_rt = invalid_slot;
+                recipe.vrs_rt   = invalid_slot;
+
+                bool has_any_shader = false;
+                for (size_t i = 0; i < pso.shaders.size(); ++i)
+                {
+                    if (pso.shaders[i])
+                    {
+                        const uint8_t slot = find_shader_slot(pso.shaders[i]);
+                        if (slot == invalid_slot)
+                        {
+                            return; // non-renderer shader (e.g. custom/imgui)
+                        }
+                        recipe.shaders[i] = slot;
+                        has_any_shader    = true;
+                    }
+                }
+                if (!has_any_shader)
+                {
+                    return;
+                }
+
+                recipe.uses_swapchain = pso.render_target_swapchain ? 1 : 0;
+                for (size_t i = 0; i < rhi_max_render_target_count; ++i)
+                {
+                    if (pso.render_target_color_textures[i])
+                    {
+                        const uint8_t slot = find_rt_slot(pso.render_target_color_textures[i]);
+                        if (slot == invalid_slot)
+                        {
+                            return; // temporary/secondary render target
+                        }
+                        recipe.color_rts[i] = slot;
+                    }
+                }
+                if (pso.render_target_depth_texture)
+                {
+                    const uint8_t slot = find_rt_slot(pso.render_target_depth_texture);
+                    if (slot == invalid_slot)
+                    {
+                        return;
+                    }
+                    recipe.depth_rt = slot;
+                }
+                if (pso.vrs_input_texture)
+                {
+                    const uint8_t slot = find_rt_slot(pso.vrs_input_texture);
+                    if (slot == invalid_slot)
+                    {
+                        return;
+                    }
+                    recipe.vrs_rt = slot;
+                }
+
+                recipe.rasterizer_mode           = static_cast<uint8_t>(pso.rasterizer_mode);
+                recipe.blend_mode                = static_cast<uint8_t>(pso.blend_mode);
+                recipe.depth_mode                = static_cast<uint8_t>(pso.depth_mode);
+                recipe.cull_mode                 = static_cast<uint8_t>(pso.cull_mode);
+                recipe.primitive_topology        = static_cast<uint8_t>(pso.primitive_topology);
+                recipe.is_multiview              = pso.is_multiview ? 1 : 0;
+                recipe.render_target_array_index = pso.render_target_array_index;
+                snprintf(recipe.name, sizeof(recipe.name), "%s", pso.name);
+
+                const uint64_t key = hash_recipe(recipe);
+                lock_guard<mutex> lock(recipe_mutex);
+                if (graphics_recipe_keys.insert(key).second)
+                {
+                    graphics_recipes.push_back(recipe);
+                    graphics_last_hash.push_back(0);
+                    recipes_dirty      = true;
+                    last_dirty_time_ms = Timer::GetTimeMs();
+                }
+            }
+
+            void initialize()
+            {
+                if (Engine::HasArgument("--bake-shaders") || Engine::IsStartupSmokeTest())
+                {
+                    return;
+                }
+
+                load_recipes();
+                RHI_Pipeline::SetCreateCallback(record_graphics_pso);
+            }
+
+            void shutdown()
+            {
+                RHI_Pipeline::SetCreateCallback(nullptr);
+                lock_guard<mutex> lock(recipe_mutex);
+                save_recipes_locked();
+                graphics_recipes.clear();
+                graphics_recipe_keys.clear();
+                graphics_last_hash.clear();
+                compute_last_hash.fill(0);
+                rt_last_hash.fill(0);
+            }
+
+            void tick()
+            {
+                if (Engine::HasArgument("--bake-shaders") || Engine::IsStartupSmokeTest())
+                {
+                    return;
+                }
+
+                // persist newly discovered graphics recipes once recording settles
+                {
+                    lock_guard<mutex> lock(recipe_mutex);
+                    if (recipes_dirty && (Timer::GetTimeMs() - last_dirty_time_ms) > 5000.0)
+                    {
+                        save_recipes_locked();
+                    }
+                }
+
+                // keep the background pipeline queue fed without starving live rendering or shader workers
+                constexpr uint32_t max_queued_pipelines = 4;
+                constexpr uint32_t max_per_frame        = 4;
+                uint32_t submitted_this_frame           = 0;
+
+                auto can_submit = [&]()
+                {
+                    return submitted_this_frame < max_per_frame && RHI_Compiler::Pipelines().GetPendingCount() < max_queued_pipelines;
+                };
+
+                // when no world is loaded yet, skip temporary pass-1 (-Od) PSOs so we go straight to
+                // final optimized PSOs as soon as pass-2 finishes (cached clean shaders prewarm immediately)
+                const bool world_loaded = World::GetCamera() != nullptr;
+                const auto& shaders     = Renderer::GetShaders();
+                const auto& rts         = Renderer::GetRenderTargets();
+
+                // 1. compute PSOs (100% deterministic from each compute shader)
+                for (size_t i = 0; i < shaders.size() && can_submit(); ++i)
+                {
+                    RHI_Shader* shader = shaders[i].get();
+                    if (!shader || shader->GetShaderStage() != RHI_Shader_Type::Compute || !shader->IsCompiled() || !shader->GetRhiResource())
+                    {
+                        continue;
+                    }
+                    if (!world_loaded && shader->IsFastPass())
+                    {
+                        continue;
+                    }
+
+                    const uint64_t shader_hash = shader->GetHash();
+                    if (shader_hash == 0 || compute_last_hash[i] == shader_hash)
+                    {
+                        continue;
+                    }
+
+                    RHI_PipelineState pso;
+                    pso.shaders[RHI_Shader_Type::Compute] = shader;
+                    pso.name                              = shader->GetObjectName().c_str();
+                    pso.background                        = true;
+                    pso.Prepare();
+
+                    RHI_Pipeline* pipeline = nullptr;
+                    RHI_Device::GetOrCreatePipeline(pso, pipeline);
+                    compute_last_hash[i] = shader_hash;
+                    ++submitted_this_frame;
+                }
+
+                // 2. ray-tracing PSOs
+                if (RHI_Device::Caps().ray_tracing)
+                {
+                    for (size_t i = 0; i < sizeof(rt_recipes) / sizeof(rt_recipes[0]) && can_submit(); ++i)
+                    {
+                        const RtRecipe& rt = rt_recipes[i];
+                        RHI_Shader* raygen = shaders[static_cast<size_t>(rt.raygen)].get();
+                        RHI_Shader* miss   = shaders[static_cast<size_t>(rt.miss)].get();
+                        RHI_Shader* hit    = shaders[static_cast<size_t>(rt.hit)].get();
+                        if (!raygen || !miss || !hit || !raygen->IsCompiled() || !miss->IsCompiled() || !hit->IsCompiled())
+                        {
+                            continue;
+                        }
+                        if (!raygen->GetRhiResource() || !miss->GetRhiResource() || !hit->GetRhiResource())
+                        {
+                            continue;
+                        }
+                        if (!world_loaded && (raygen->IsFastPass() || miss->IsFastPass() || hit->IsFastPass()))
+                        {
+                            continue;
+                        }
+
+                        uint64_t combined = 0;
+                        combined = rhi_hash_combine(combined, raygen->GetHash());
+                        combined = rhi_hash_combine(combined, miss->GetHash());
+                        combined = rhi_hash_combine(combined, hit->GetHash());
+                        if (combined == 0 || rt_last_hash[i] == combined)
+                        {
+                            continue;
+                        }
+
+                        RHI_PipelineState pso;
+                        pso.name                                    = rt.name;
+                        pso.shaders[RHI_Shader_Type::RayGeneration] = raygen;
+                        pso.shaders[RHI_Shader_Type::RayMiss]       = miss;
+                        pso.shaders[RHI_Shader_Type::RayHit]        = hit;
+                        pso.background                              = true;
+                        pso.Prepare();
+
+                        RHI_Pipeline* pipeline = nullptr;
+                        RHI_Device::GetOrCreatePipeline(pso, pipeline);
+                        rt_last_hash[i] = combined;
+                        ++submitted_this_frame;
+                    }
+                }
+
+                // 3. cached graphics PSO recipes from previous runs
+                lock_guard<mutex> lock(recipe_mutex);
+                for (size_t i = 0; i < graphics_recipes.size() && can_submit(); ++i)
+                {
+                    const GraphicsPsoRecipe& r = graphics_recipes[i];
+
+                    RHI_PipelineState pso;
+                    pso.name                      = r.name[0] ? r.name : "prewarm_graphics";
+                    pso.rasterizer_mode           = static_cast<RHI_RasterizerMode>(r.rasterizer_mode);
+                    pso.blend_mode                = static_cast<RHI_BlendMode>(r.blend_mode);
+                    pso.depth_mode                = static_cast<RHI_DepthMode>(r.depth_mode);
+                    pso.cull_mode                 = static_cast<RHI_CullMode>(r.cull_mode);
+                    pso.primitive_topology        = static_cast<RHI_PrimitiveTopology>(r.primitive_topology);
+                    pso.is_multiview              = r.is_multiview != 0;
+                    pso.render_target_array_index = r.render_target_array_index;
+                    pso.background                = true;
+
+                    bool ready        = true;
+                    bool has_shader   = false;
+                    uint64_t combined = 0;
+                    for (size_t s = 0; s < pso.shaders.size(); ++s)
+                    {
+                        if (r.shaders[s] == invalid_slot)
+                        {
+                            continue;
+                        }
+                        if (r.shaders[s] >= shaders.size())
+                        {
+                            ready = false;
+                            break;
+                        }
+                        RHI_Shader* shader = shaders[r.shaders[s]].get();
+                        if (!shader || !shader->IsCompiled() || !shader->GetRhiResource() || static_cast<size_t>(shader->GetShaderStage()) != s)
+                        {
+                            ready = false;
+                            break;
+                        }
+                        if (!world_loaded && shader->IsFastPass())
+                        {
+                            ready = false;
+                            break;
+                        }
+                        pso.shaders[s] = shader;
+                        combined       = rhi_hash_combine(combined, shader->GetHash());
+                        has_shader     = true;
+                    }
+                    if (!ready || !has_shader || combined == 0 || graphics_last_hash[i] == combined)
+                    {
+                        continue;
+                    }
+
+                    bool has_target = false;
+                    if (r.uses_swapchain)
+                    {
+                        pso.render_target_swapchain = RHI_Device::GetSwapChain();
+                        if (!pso.render_target_swapchain || pso.render_target_swapchain->GetWidth() == 0 || pso.render_target_swapchain->GetHeight() == 0)
+                        {
+                            continue;
+                        }
+                        has_target = true;
+                    }
+                    for (size_t c = 0; c < rhi_max_render_target_count; ++c)
+                    {
+                        if (r.color_rts[c] == invalid_slot)
+                        {
+                            continue;
+                        }
+                        if (r.color_rts[c] >= rts.size() || !rts[r.color_rts[c]] || rts[r.color_rts[c]]->GetWidth() == 0 || rts[r.color_rts[c]]->GetHeight() == 0)
+                        {
+                            ready = false;
+                            break;
+                        }
+                        pso.render_target_color_textures[c] = rts[r.color_rts[c]].get();
+                        has_target = true;
+                    }
+                    if (!ready)
+                    {
+                        continue;
+                    }
+                    if (r.depth_rt != invalid_slot)
+                    {
+                        if (r.depth_rt >= rts.size() || !rts[r.depth_rt] || rts[r.depth_rt]->GetWidth() == 0 || rts[r.depth_rt]->GetHeight() == 0)
+                        {
+                            continue;
+                        }
+                        pso.render_target_depth_texture = rts[r.depth_rt].get();
+                        has_target = true;
+                    }
+                    if (r.vrs_rt != invalid_slot)
+                    {
+                        if (r.vrs_rt >= rts.size() || !rts[r.vrs_rt])
+                        {
+                            continue;
+                        }
+                        pso.vrs_input_texture = rts[r.vrs_rt].get();
+                    }
+                    if (!has_target)
+                    {
+                        continue;
+                    }
+
+                    pso.Prepare();
+
+                    RHI_Pipeline* pipeline = nullptr;
+                    RHI_Device::GetOrCreatePipeline(pso, pipeline);
+                    graphics_last_hash[i] = combined;
+                    ++submitted_this_frame;
+                }
+            }
+        }
         vector<QueuedTextureUpload> queued_texture_uploads;
 
         // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
@@ -934,6 +1472,14 @@ namespace spartan
         RHI_VendorTechnology::Initialize();
         Engine::LogStartupStep("renderer: vendor sdks");
 
+        // start shader compilation first so dirty shaders compile in parallel with swapchain and standard assets
+        pso_prewarm::initialize();
+        auto shaders_future = make_shared<future<void>>(ThreadPool::AddTask([]()
+        {
+            CreateShaders();
+            Engine::LogStartupStep("renderer: shaders queued");
+        }));
+
         // the driver spends a few hundred milliseconds creating the swapchain, the render targets below don't need it so they overlap
         void* window_sdl                = Window::GetHandleSDL();
         const uint32_t window_width     = Window::GetWidthInPixels();
@@ -945,7 +1491,7 @@ namespace spartan
             RHI_Device::CreateSwapChain(window_sdl, window_width, window_height, present, swap_chain_buffer_count, hdr, "renderer");
         });
 
-        ThreadPool::AddTask([]()
+        ThreadPool::AddTask([shaders_future]()
         {
             m_initialized_resources = false;
 
@@ -959,7 +1505,7 @@ namespace spartan
 
             CreateStandardMaterials();
             CreateFonts();
-            CreateShaders();
+            shaders_future->get();
             m_initialized_resources = true;
             Engine::LogStartupStep("renderer: resources (async)");
         });
@@ -1026,6 +1572,7 @@ namespace spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
+        pso_prewarm::shutdown();
         RHI_TextureStreaming::Shutdown();
         RHI_Device::QueueWaitAll();
 
@@ -8010,6 +8557,9 @@ namespace spartan
             ResetTaauHistory();
             SP_LOG_INFO("ReSTIR shader reload applied as a group; history reset");
         }
+
+        // prewarm compute, ray-tracing, and cached graphics PSOs in the background as shaders become ready
+        pso_prewarm::tick();
 
         // Skip scene recording during initial shader compilation; never wait on the compiler here.
         static bool shaders_ready = false;

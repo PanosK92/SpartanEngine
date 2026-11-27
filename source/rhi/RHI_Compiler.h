@@ -21,13 +21,21 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan
 {
     // Dedicated queues keep driver/DXC work out of the frame's general-purpose task pool.
-    // Shaders compile in parallel, each worker owns its own dxc instance.
-    // A single pipeline worker serializes access to native pipeline caches/libraries.
+    // Priority tasks (pass 1 fast shaders, live on-demand PSOs) always drain before
+    // background tasks (pass 2 optimized shaders, startup PSO prewarming).
     class RHI_Compiler
     {
     public:
         static RHI_Compiler& Shaders() { static RHI_Compiler queue(std::clamp(std::thread::hardware_concurrency() / 2u, 1u, 8u)); return queue; }
-        static RHI_Compiler& Pipelines() { static RHI_Compiler queue(1); return queue; }
+        static RHI_Compiler& Pipelines()
+        {
+#if defined(API_GRAPHICS_D3D12)
+            static RHI_Compiler queue(std::clamp(std::thread::hardware_concurrency() / 4u, 2u, 4u));
+#else
+            static RHI_Compiler queue(1);
+#endif
+            return queue;
+        }
 
         // work submitted while the queue is busy joins the running batch, so the count only resets once it drains
         struct Progress
@@ -38,29 +46,12 @@ namespace spartan
 
         std::future<void> Submit(std::function<void()> function)
         {
-            std::packaged_task<void()> task(std::move(function));
-            auto result = task.get_future();
-#if defined(__EMSCRIPTEN__)
-            // the browser build has no threads, the work is done before the caller gets its future
-            m_batch_completed = 0;
-            m_batch_submitted = 1;
-            task();
-            m_batch_completed = 1;
-            return result;
-#endif
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                if (m_pending == 0)
-                {
-                    m_batch_completed = 0;
-                    m_batch_submitted = 0;
-                }
-                m_tasks.push_back(std::move(task));
-                ++m_batch_submitted;
-                ++m_pending;
-            }
-            m_wake.notify_one();
-            return result;
+            return SubmitInternal(std::move(function), false);
+        }
+
+        std::future<void> SubmitBackground(std::function<void()> function)
+        {
+            return SubmitInternal(std::move(function), true);
         }
 
         // Only teardown waits. Rendering polls the published result instead.
@@ -70,13 +61,24 @@ namespace spartan
             m_idle.wait(lock, [this] { return m_pending == 0; });
         }
 
-        bool IsIdle() const { return m_pending.load() == 0; }
+        bool IsIdle() const           { return m_pending.load() == 0; }
+        bool IsPriorityIdle() const   { return m_pending_priority.load() == 0; }
+        bool IsBackgroundIdle() const { return m_pending_background.load() == 0; }
+        uint32_t GetPendingCount() const { return m_pending.load(); }
 
         Progress GetProgress() const
         {
             Progress progress;
             progress.submitted = m_batch_submitted.load();
             progress.completed = std::min(m_batch_completed.load(), progress.submitted);
+            return progress;
+        }
+
+        Progress GetBackgroundProgress() const
+        {
+            Progress progress;
+            progress.submitted = m_bg_batch_submitted.load();
+            progress.completed = std::min(m_bg_batch_completed.load(), progress.submitted);
             return progress;
         }
 
@@ -94,6 +96,58 @@ namespace spartan
         }
 
     private:
+        std::future<void> SubmitInternal(std::function<void()> function, bool background)
+        {
+            std::packaged_task<void()> task(std::move(function));
+            auto result = task.get_future();
+#if defined(__EMSCRIPTEN__)
+            // the browser build has no threads, the work is done before the caller gets its future
+            if (background)
+            {
+                m_bg_batch_completed = 0;
+                m_bg_batch_submitted = 1;
+                task();
+                m_bg_batch_completed = 1;
+            }
+            else
+            {
+                m_batch_completed = 0;
+                m_batch_submitted = 1;
+                task();
+                m_batch_completed = 1;
+            }
+            return result;
+#endif
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                if (background)
+                {
+                    if (m_pending_background == 0)
+                    {
+                        m_bg_batch_completed = 0;
+                        m_bg_batch_submitted = 0;
+                    }
+                    m_background_tasks.push_back(std::move(task));
+                    ++m_bg_batch_submitted;
+                    ++m_pending_background;
+                }
+                else
+                {
+                    if (m_pending_priority == 0)
+                    {
+                        m_batch_completed = 0;
+                        m_batch_submitted = 0;
+                    }
+                    m_tasks.push_back(std::move(task));
+                    ++m_batch_submitted;
+                    ++m_pending_priority;
+                }
+                ++m_pending;
+            }
+            m_wake.notify_one();
+            return result;
+        }
+
         explicit RHI_Compiler(uint32_t worker_count)
         {
 #if defined(__EMSCRIPTEN__)
@@ -106,18 +160,39 @@ namespace spartan
                     for (;;)
                     {
                         std::packaged_task<void()> task;
+                        bool is_background = false;
                         {
                             std::unique_lock<std::mutex> lock(m_mutex);
-                            m_wake.wait(lock, [this] { return m_stopping || !m_tasks.empty(); });
-                            if (m_tasks.empty() && m_stopping)
+                            m_wake.wait(lock, [this] { return m_stopping || !m_tasks.empty() || !m_background_tasks.empty(); });
+                            if (m_tasks.empty() && m_background_tasks.empty() && m_stopping)
                                 return;
-                            task = std::move(m_tasks.front());
-                            m_tasks.pop_front();
+
+                            if (!m_tasks.empty())
+                            {
+                                task = std::move(m_tasks.front());
+                                m_tasks.pop_front();
+                                is_background = false;
+                            }
+                            else
+                            {
+                                task = std::move(m_background_tasks.front());
+                                m_background_tasks.pop_front();
+                                is_background = true;
+                            }
                         }
                         task();
                         {
                             std::lock_guard<std::mutex> lock(m_mutex);
-                            ++m_batch_completed;
+                            if (is_background)
+                            {
+                                ++m_bg_batch_completed;
+                                --m_pending_background;
+                            }
+                            else
+                            {
+                                ++m_batch_completed;
+                                --m_pending_priority;
+                            }
                             --m_pending;
                         }
                         m_idle.notify_all();
@@ -126,13 +201,18 @@ namespace spartan
             }
         }
 
-        std::atomic<uint32_t> m_pending         = 0;
-        std::atomic<uint32_t> m_batch_completed = 0;
-        std::atomic<uint32_t> m_batch_submitted = 0;
+        std::atomic<uint32_t> m_pending            = 0;
+        std::atomic<uint32_t> m_pending_priority   = 0;
+        std::atomic<uint32_t> m_pending_background = 0;
+        std::atomic<uint32_t> m_batch_completed    = 0;
+        std::atomic<uint32_t> m_batch_submitted    = 0;
+        std::atomic<uint32_t> m_bg_batch_completed = 0;
+        std::atomic<uint32_t> m_bg_batch_submitted = 0;
         std::mutex m_mutex;
         std::condition_variable m_wake;
         std::condition_variable m_idle;
         std::deque<std::packaged_task<void()>> m_tasks;
+        std::deque<std::packaged_task<void()>> m_background_tasks;
         bool m_stopping = false;
         std::vector<std::thread> m_workers;
     };

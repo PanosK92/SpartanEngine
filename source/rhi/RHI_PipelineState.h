@@ -68,6 +68,7 @@ namespace spartan
         // dynamic properties, changing these will not create a new PSO
         bool resolution_scale       = false;
         bool use_standard_resources = true;
+        bool background             = false; // schedules PSO compilation on the low-priority background queue
         float clear_depth          = rhi_depth_load;
         uint32_t clear_stencil     = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;

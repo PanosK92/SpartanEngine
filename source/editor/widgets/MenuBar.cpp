@@ -25,6 +25,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "core/Definitions.h"
 #include "core/ThreadPool.h"
 #include "core/ProgressTracker.h"
+#include "rhi/RHI_Compiler.h"
 #include "commands/CommandStack.h"
 #include "mcp/McpServer.h"
 #include "../mcp/McpAssistant.h"
@@ -1022,6 +1023,251 @@ namespace
             }
         }
 
+        void draw_compilation_status_pill(float menubar_height, float gap_start_x, float gap_end_x)
+        {
+            const bool shaders_p1   = !spartan::RHI_Compiler::Shaders().IsPriorityIdle();
+            const bool shaders_p2   = !spartan::RHI_Compiler::Shaders().IsBackgroundIdle();
+            const bool pipelines_p1 = !spartan::RHI_Compiler::Pipelines().IsPriorityIdle();
+            const bool pipelines_p2 = !spartan::RHI_Compiler::Pipelines().IsBackgroundIdle();
+            const bool any_active   = shaders_p1 || shaders_p2 || pipelines_p1 || pipelines_p2;
+
+            const auto sp1 = spartan::RHI_Compiler::Shaders().GetProgress();
+            const auto sp2 = spartan::RHI_Compiler::Shaders().GetBackgroundProgress();
+            const auto pp1 = spartan::RHI_Compiler::Pipelines().GetProgress();
+            const auto pp2 = spartan::RHI_Compiler::Pipelines().GetBackgroundProgress();
+
+            static double busy_sec        = 0.0;
+            static double done_hold_sec   = 0.0;
+            static bool   was_shown       = false;
+            static bool   last_was_pass2  = false;
+            const double  dt              = static_cast<double>(ImGui::GetIO().DeltaTime);
+
+            if (any_active)
+            {
+                busy_sec     += dt;
+                done_hold_sec = 0.0;
+                if (shaders_p2 || pipelines_p2)
+                {
+                    last_was_pass2 = true;
+                }
+                else if (shaders_p1 || pipelines_p1)
+                {
+                    last_was_pass2 = false;
+                }
+            }
+            else
+            {
+                if (was_shown)
+                {
+                    done_hold_sec += dt;
+                    if (done_hold_sec >= 0.9)
+                    {
+                        was_shown     = false;
+                        busy_sec      = 0.0;
+                        done_hold_sec = 0.0;
+                    }
+                }
+                else
+                {
+                    busy_sec = 0.0;
+                }
+            }
+
+            const uint32_t total_submitted = (shaders_p1 ? sp1.submitted : 0) + (shaders_p2 ? sp2.submitted : 0) + (pipelines_p1 ? pp1.submitted : 0) + (pipelines_p2 ? pp2.submitted : 0);
+            const bool should_show = (any_active && (busy_sec >= 0.15 || total_submitted >= 4)) || (was_shown && done_hold_sec < 0.9);
+            if (should_show && any_active)
+            {
+                was_shown = true;
+            }
+
+            const float alpha_anim = ImGui::EditorUi::animate(ImGui::GetID("##compile_pill_vis"), should_show ? 1.0f : 0.0f, should_show ? 10.0f : 5.0f);
+            if (alpha_anim <= 0.01f)
+            {
+                return;
+            }
+
+            const float scale        = dpi();
+            const float avail_width  = gap_end_x - gap_start_x;
+            if (avail_width < 110.0f * scale)
+            {
+                return;
+            }
+
+            const char* label        = nullptr;
+            const char* compact      = nullptr;
+            uint32_t completed       = 0;
+            uint32_t submitted       = 0;
+            ImVec4 signal            = ImGui::Style::color_accent_1;
+            bool finished            = !any_active;
+
+            if (shaders_p1)
+            {
+                label     = "Pass 1 - Fast shaders";
+                compact   = "Shaders 1/2";
+                completed = sp1.completed;
+                submitted = sp1.submitted;
+                signal    = ImGui::Style::color_warning;
+            }
+            else if (pipelines_p1)
+            {
+                label     = "Pass 1 - Fast pipelines";
+                compact   = "PSOs 1/2";
+                completed = pp1.completed;
+                submitted = pp1.submitted;
+                signal    = ImGui::Style::color_warning;
+            }
+            else if (shaders_p2)
+            {
+                label     = "Pass 2 - Optimizing shaders";
+                compact   = "Optimizing 2/2";
+                completed = sp2.completed;
+                submitted = sp2.submitted;
+                signal    = ImGui::Style::color_accent_1;
+            }
+            else if (pipelines_p2)
+            {
+                label     = "Pass 2 - Optimizing pipelines";
+                compact   = "PSOs 2/2";
+                completed = pp2.completed;
+                submitted = pp2.submitted;
+                signal    = ImGui::Style::color_accent_1;
+            }
+            else
+            {
+                label     = last_was_pass2 ? "Shaders optimized" : "Shaders ready";
+                compact   = "Ready";
+                completed = 1;
+                submitted = 1;
+                signal    = ImGui::Style::color_ok;
+            }
+
+            char count_buf[32] = {};
+            if (!finished && submitted > 0)
+            {
+                snprintf(count_buf, sizeof(count_buf), "%u/%u", completed, submitted);
+            }
+
+            const float text_height  = ImGui::GetTextLineHeight();
+            const float pill_height  = text_height + 8.0f * scale;
+            const float pad_x        = 10.0f * scale;
+            const float dot_radius   = 3.2f * scale;
+            const float dot_gap      = 7.0f * scale;
+            const float count_gap    = count_buf[0] ? 8.0f * scale : 0.0f;
+            const float count_width  = count_buf[0] ? ImGui::CalcTextSize(count_buf).x : 0.0f;
+
+            const char* active_label = label;
+            float label_width        = ImGui::CalcTextSize(active_label).x;
+            float needed_width       = pad_x * 2.0f + dot_radius * 2.0f + dot_gap + label_width + count_gap + count_width;
+            if (needed_width > avail_width)
+            {
+                active_label = compact;
+                label_width  = ImGui::CalcTextSize(active_label).x;
+                needed_width = pad_x * 2.0f + dot_radius * 2.0f + dot_gap + label_width + count_gap + count_width;
+            }
+
+            const float pill_width   = min(needed_width, avail_width);
+            const float pill_x       = gap_end_x - pill_width;
+            const float pill_y       = (menubar_height - pill_height) * 0.5f;
+
+            ImGui::SetCursorPosX(pill_x);
+            ImGui::SetCursorPosY(pill_y);
+            ImGui::Dummy(ImVec2(pill_width, pill_height));
+
+            const ImVec2 min_pos     = ImVec2(IM_ROUND(ImGui::GetItemRectMin().x), IM_ROUND(ImGui::GetItemRectMin().y));
+            const ImVec2 max_pos     = ImVec2(IM_ROUND(ImGui::GetItemRectMax().x), IM_ROUND(ImGui::GetItemRectMax().y));
+            const float rounding     = pill_height * 0.5f;
+            const bool hovered       = ImGui::IsItemHovered();
+            ImDrawList* draw         = ImGui::GetWindowDrawList();
+
+            const float raw_fraction = (submitted > 0) ? clamp(static_cast<float>(completed) / static_cast<float>(submitted), 0.0f, 1.0f) : 0.0f;
+            const float fraction     = ImGui::EditorUi::animate(ImGui::GetID("##compile_pill_frac"), raw_fraction, 12.0f);
+            const float pulse        = finished ? 1.0f : (0.55f + 0.45f * sinf(static_cast<float>(ImGui::GetTime()) * 5.0f));
+
+            // subtle ambient glow + glass pill fill
+            if (alpha_anim > 0.1f)
+            {
+                ImGui::EditorUi::draw_glow(draw, min_pos, max_pos, signal, rounding, 7.0f * scale, (hovered ? 0.35f : 0.20f) * alpha_anim * pulse);
+            }
+            draw->AddRectFilled(min_pos, max_pos, ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, (0.09f + 0.04f * pulse) * alpha_anim)), rounding);
+
+            // soft progress wash + sleek 2px bottom progress track clipped cleanly inside the pill
+            if (!finished && fraction > 0.005f)
+            {
+                const float fill_x = min_pos.x + (max_pos.x - min_pos.x) * fraction;
+                draw->PushClipRect(min_pos, ImVec2(fill_x, max_pos.y), true);
+                draw->AddRectFilled(min_pos, max_pos, ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.10f * alpha_anim)), rounding);
+                draw->PopClipRect();
+
+                const float bar_inset = rounding * 0.55f;
+                const float bar_x0    = min_pos.x + bar_inset;
+                const float bar_x1    = max_pos.x - bar_inset;
+                const float bar_h     = max(1.5f, 2.0f * scale);
+                const float bar_y0    = max_pos.y - bar_h - max(1.0f, scale * 0.5f);
+                const float bar_y1    = bar_y0 + bar_h;
+                if (bar_x1 > bar_x0 + 4.0f)
+                {
+                    draw->AddRectFilled(ImVec2(bar_x0, bar_y0), ImVec2(bar_x1, bar_y1), ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.08f * alpha_anim)), bar_h * 0.5f);
+                    draw->AddRectFilled(ImVec2(bar_x0, bar_y0), ImVec2(bar_x0 + (bar_x1 - bar_x0) * fraction, bar_y1), ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.85f * alpha_anim)), bar_h * 0.5f);
+                }
+            }
+
+            draw->AddRect(min_pos, max_pos, ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, ((hovered ? 0.55f : 0.30f) + 0.25f * pulse) * alpha_anim)), rounding, max(1.0f, IM_ROUND(scale)));
+
+            // pulsing status dot
+            const ImVec2 dot_center = ImVec2(min_pos.x + pad_x + dot_radius, (min_pos.y + max_pos.y) * 0.5f);
+            ImGui::EditorUi::status_dot(draw, dot_center, dot_radius, ImGui::EditorUi::alpha(signal, alpha_anim), !finished);
+
+            // label + right-aligned tabular counter
+            const float text_x     = dot_center.x + dot_radius + dot_gap;
+            const float text_y     = min_pos.y + (pill_height - text_height) * 0.5f - (finished ? 0.0f : 0.5f * scale);
+            const ImVec4 text_col  = ImGui::EditorUi::alpha(ImGui::Style::lerp(ImGui::Style::color_text, signal, 0.28f), alpha_anim);
+            const ImVec4 count_col = ImGui::EditorUi::alpha(ImGui::Style::color_text_muted, 0.90f * alpha_anim);
+
+            draw->PushClipRect(ImVec2(text_x, min_pos.y), ImVec2(max_pos.x - pad_x, max_pos.y), true);
+            draw->AddText(ImVec2(text_x, text_y), ImGui::EditorUi::color(text_col), active_label);
+            if (count_buf[0])
+            {
+                const float count_x = max(text_x + label_width + count_gap, max_pos.x - pad_x - count_width);
+                draw->AddText(ImVec2(count_x, text_y), ImGui::EditorUi::color(count_col), count_buf);
+            }
+            draw->PopClipRect();
+
+            titlebar_interactive_spans.emplace_back(pill_x, pill_x + pill_width);
+
+            if (hovered)
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextColored(signal, "%s", finished ? "Compilation complete" : "Background Shader & Pipeline Compilation");
+                ImGui::Separator();
+                if (shaders_p1)
+                {
+                    ImGui::Text("Pass 1 (Fast preview shaders):   %u / %u", sp1.completed, sp1.submitted);
+                }
+                if (shaders_p2)
+                {
+                    ImGui::Text("Pass 2 (Fully optimized shaders): %u / %u", sp2.completed, sp2.submitted);
+                }
+                if (pipelines_p1)
+                {
+                    ImGui::Text("Pass 1 (Fast pipelines):         %u / %u", pp1.completed, pp1.submitted);
+                }
+                if (pipelines_p2)
+                {
+                    ImGui::Text("Pass 2 (Optimized pipelines):    %u / %u", pp2.completed, pp2.submitted);
+                }
+                if (finished)
+                {
+                    ImGui::TextDisabled("All shaders and pipelines are up to date.");
+                }
+                else
+                {
+                    ImGui::Spacing();
+                    ImGui::TextDisabled("Pass 1 compiles fast (-Od) so you can render immediately.\nPass 2 compiles fully optimized shaders and swaps them in seamlessly.");
+                }
+                ImGui::EndTooltip();
+            }
+        }
+
         void tick(float menubar_height, float left_content_end_x)
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -1063,6 +1309,7 @@ namespace
             }
 
             draw_transport_group(menubar_height, transport_pos_x);
+            draw_compilation_status_pill(menubar_height, transport_pos_x + transport_width + group_gap(), right_start_x - group_gap());
             draw_right_groups(menubar_height, right_start_x, visible_widget_count, show_overflow);
             titlebar_interactive_spans.emplace_back(transport_pos_x, transport_pos_x + transport_width);
             titlebar_interactive_spans.emplace_back(right_start_x, size_avail_x);

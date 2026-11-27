@@ -42,6 +42,7 @@ namespace spartan
         void CompileFromSpirv(const RHI_Shader_Type type, const void* spirv_bytecode, uint64_t spirv_size, const std::string& name);
         RHI_ShaderCompilationState GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled() const                                { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
+        bool IsFastPass() const                                { return m_is_fast_pass; }
 
         // hot reload, a compiled shader recompiles into a staged copy and keeps serving its last good
         // module until ApplyReload swaps the result in, on the main thread before a frame records
@@ -77,6 +78,8 @@ namespace spartan
         void* GetRhiResource()                                   const { return m_rhi_resource; }
 
     private:
+        void CompileSync(const RHI_Shader_Type type, const std::string& file_path, const RHI_Vertex_Type vertex_type, bool allow_fast_pass);
+        void QueueOptimizationPass();
         void PreprocessIncludeDirectives(const std::string& file_path, std::set<std::string>& processed_files);
         void* RHI_Compile();
         void Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
@@ -105,6 +108,9 @@ namespace spartan
         void OwnResource();
         std::shared_ptr<void> m_resource_owner;
         std::future<void> m_compile_task;
+        std::future<void> m_optimize_task;
+        bool m_allow_fast_pass = false;
+        bool m_is_fast_pass    = false;
         void* m_rhi_resource = nullptr;
     };
 }

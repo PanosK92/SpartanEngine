@@ -32,6 +32,9 @@ namespace spartan
         void SetRhiResourceLayout(void* layout)  { m_rhi_resource_layout = layout; }
         uint32_t GetPushConstantStages() const   { return m_push_constant_stages; }
 
+        using CreateCallback = void (*)(const RHI_PipelineState&);
+        static void SetCreateCallback(CreateCallback callback);
+
     private:
         void Create(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout = nullptr);
         std::atomic<bool> m_ready = false;

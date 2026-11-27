@@ -182,8 +182,23 @@ namespace spartan
         }
     }
 
+    namespace
+    {
+        RHI_Pipeline::CreateCallback g_pipeline_create_callback = nullptr;
+    }
+
+    void RHI_Pipeline::SetCreateCallback(CreateCallback callback)
+    {
+        g_pipeline_create_callback = callback;
+    }
+
     RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
+        if (g_pipeline_create_callback && !pipeline_state.background)
+        {
+            g_pipeline_create_callback(pipeline_state);
+        }
+
         struct Inputs
         {
             string name;
@@ -202,7 +217,7 @@ namespace spartan
                 m_state.shaders[i] = inputs->shaders[i].get();
             }
         }
-        m_compile_task = RHI_Compiler::Pipelines().Submit([this, descriptor_set_layout]()
+        auto compile_fn = [this, descriptor_set_layout]()
         {
             SP_LOG_INFO("Compiling PSO '%s'", m_state.name);
             const Stopwatch compile_timer;
@@ -217,7 +232,10 @@ namespace spartan
                 SP_LOG_ERROR("Pipeline '%s' compilation failed: %s", m_state.name, error.what());
             }
             m_ready.store(true, memory_order_release);
-        });
+        };
+        m_compile_task = pipeline_state.background
+            ? RHI_Compiler::Pipelines().SubmitBackground(move(compile_fn))
+            : RHI_Compiler::Pipelines().Submit(move(compile_fn));
     }
 
     RHI_PipelineState::RHI_PipelineState()
