@@ -6,7 +6,6 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "PlaySession.cpp"
-#include "Prefab.cpp"
-#include "WorldPreparation.cpp"
-#include "WorldResources.cpp"
+#include "../animation/Animation.cpp"
+#include "../animation/AnimationEvaluate.cpp"
+#include "../animation/AnimationIk.cpp"

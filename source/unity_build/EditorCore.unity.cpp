@@ -6,7 +6,10 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "Metal_Buffer.cpp"
-#include "Metal_Queue.cpp"
-#include "Metal_Sampler.cpp"
-#include "Metal_SyncPrimitive.cpp"
+#include "../editor/EditorWidgets.cpp"
+#include "../editor/AssetThumbnails.cpp"
+#include "../editor/Editor.cpp"
+#include "../editor/EditorLayout.cpp"
+#include "../editor/GeneralWindows.cpp"
+#include "../editor/Selection.cpp"
+#include "../editor/TransformGizmo.cpp"

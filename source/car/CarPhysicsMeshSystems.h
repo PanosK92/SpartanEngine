@@ -46,48 +46,59 @@ namespace spartan
         };
         // Unit parts share geometry across every system and every frame. Cylinders,
         // rings and gears run along X and have length 1, radius 1; boxes have size 1.
+        auto build_unit_part = [](const std::string& kind) -> std::shared_ptr<Mesh>
+        {
+            if (kind == "box")
+            {
+                return shape_mesh(physx::PxBoxGeometry(0.5f, 0.5f, 0.5f));
+            }
+            Geometry g;
+            if (kind == "gear")
+            {
+                // Machined rim, hub bore and 32 teeth, with bevelled tooth tips.
+                constexpr int segments = 128;
+                for (int i = 0; i < segments; ++i)
+                {
+                    const float a = static_cast<float>(i) * math::pi * 2 / segments;
+                    const float b = static_cast<float>(i + 1) * math::pi * 2 / segments;
+                    auto radius = [](int j) { return (j % 4 == 1 || j % 4 == 2) ? 1.0f : 0.88f; };
+                    auto v = [](float x, float r, float angle) { return Vector3(x, r * cosf(angle), r * sinf(angle)); };
+                    const float ra = radius(i), rb = radius(i + 1);
+                    const float xs[] = {-0.5f,-0.38f,0.38f,0.5f};
+                    const float bevel[] = {0.94f,1.0f,1.0f,0.94f};
+                    for (int k = 0; k < 3; ++k)
+                    {
+                        const auto v0 = v(xs[k], ra * bevel[k], a), v1 = v(xs[k], rb * bevel[k], b);
+                        const auto v2 = v(xs[k+1], ra * bevel[k+1], a), v3 = v(xs[k+1], rb * bevel[k+1], b);
+                        g.triangle(v0,v1,v2); g.triangle(v2,v1,v3);
+                    }
+                    for (int side : {-1,1})
+                    {
+                        const float x = static_cast<float>(side) * 0.5f;
+                        const auto ia = v(x,0.24f,a), ib = v(x,0.24f,b);
+                        const auto oa = v(x,ra*0.94f,a), ob = v(x,rb*0.94f,b);
+                        if (side > 0) { g.triangle(ia,oa,ob); g.triangle(ia,ob,ib); }
+                        else { g.triangle(ia,ob,oa); g.triangle(ia,ib,ob); }
+                    }
+                }
+                g.lathe({{0.5f,0.24f},{-0.5f,0.24f}}, 128);
+            }
+            else if (kind == "ring")
+            {
+                g.lathe({{-0.5f,0.78f},{-0.5f,0.94f},{-0.40f,1.0f},{0.40f,1.0f},{0.5f,0.94f},{0.5f,0.78f},{-0.5f,0.78f}}, 96);
+            }
+            else
+            {
+                g.lathe({{-0.5f,0.0f},{-0.5f,0.92f},{-0.42f,1.0f},{0.42f,1.0f},{0.5f,0.92f},{0.5f,0.0f}}, 96);
+            }
+            return g.finish();
+        };
         auto part = [&](const std::string& name, const std::string& kind, const Vector3& center,
             const Quaternion& orientation, const Vector3& size, const std::shared_ptr<Material>& finish)
         {
             draw(root, name, "system/" + kind, world(center), chassis_rotation * orientation, size, finish, [&]
             {
-                if (kind == "box") return shape_mesh(physx::PxBoxGeometry(0.5f, 0.5f, 0.5f));
-                Geometry g;
-                if (kind == "gear")
-                {
-                    // Machined rim, hub bore and 32 teeth, with bevelled tooth tips.
-                    constexpr int segments = 128;
-                    for (int i = 0; i < segments; ++i)
-                    {
-                        const float a = static_cast<float>(i) * math::pi * 2 / segments;
-                        const float b = static_cast<float>(i + 1) * math::pi * 2 / segments;
-                        auto radius = [](int j) { return (j % 4 == 1 || j % 4 == 2) ? 1.0f : 0.88f; };
-                        auto v = [](float x, float r, float angle) { return Vector3(x, r * cosf(angle), r * sinf(angle)); };
-                        const float ra = radius(i), rb = radius(i + 1);
-                        const float xs[] = {-0.5f,-0.38f,0.38f,0.5f};
-                        const float bevel[] = {0.94f,1.0f,1.0f,0.94f};
-                        for (int k = 0; k < 3; ++k)
-                        {
-                            const auto v0 = v(xs[k], ra * bevel[k], a), v1 = v(xs[k], rb * bevel[k], b);
-                            const auto v2 = v(xs[k+1], ra * bevel[k+1], a), v3 = v(xs[k+1], rb * bevel[k+1], b);
-                            g.triangle(v0,v1,v2); g.triangle(v2,v1,v3);
-                        }
-                        for (int side : {-1,1})
-                        {
-                            const float x = static_cast<float>(side) * 0.5f;
-                            const auto ia = v(x,0.24f,a), ib = v(x,0.24f,b);
-                            const auto oa = v(x,ra*0.94f,a), ob = v(x,rb*0.94f,b);
-                            if (side > 0) { g.triangle(ia,oa,ob); g.triangle(ia,ob,ib); }
-                            else { g.triangle(ia,ob,oa); g.triangle(ia,ib,ob); }
-                        }
-                    }
-                    g.lathe({{0.5f,0.24f},{-0.5f,0.24f}}, 128);
-                }
-                else if (kind == "ring")
-                    g.lathe({{-0.5f,0.78f},{-0.5f,0.94f},{-0.40f,1.0f},{0.40f,1.0f},{0.5f,0.94f},{0.5f,0.78f},{-0.5f,0.78f}}, 96);
-                else
-                    g.lathe({{-0.5f,0.0f},{-0.5f,0.92f},{-0.42f,1.0f},{0.42f,1.0f},{0.5f,0.92f},{0.5f,0.0f}}, 96);
-                return g.finish();
+                return build_unit_part(kind);
             });
         };
         auto box = [&](const std::string& name, const Vector3& center, const Vector3& size, const std::shared_ptr<Material>& finish)

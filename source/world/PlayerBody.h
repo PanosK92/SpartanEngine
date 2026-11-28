@@ -26,7 +26,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../physics/PhysicsWorld.h"
 #include "../resource/ResourceCache.h"
 #include "../scripting/Scripting.h"
-#include <sol/sol.hpp>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -227,38 +226,7 @@ namespace spartan::player_body
 
         inline bool read_car_driver_motion(uint64_t car_id, float& out_seated)
         {
-            sol::state_view lua = scripting::get_state();
-            if (!lua.lua_state())
-            {
-                return false;
-            }
-            sol::object object = lua["CarDriver"];
-            if (!object.is<sol::table>())
-            {
-                return false;
-            }
-            sol::table motion = object.as<sol::table>();
-            sol::object car_field = motion["car"];
-            uint64_t motion_car_id = 0;
-            if (car_field.is<std::string>())
-            {
-                motion_car_id = std::strtoull(car_field.as<std::string>().c_str(), nullptr, 10);
-            }
-            else if (car_field.is<uint64_t>())
-            {
-                motion_car_id = car_field.as<uint64_t>();
-            }
-            if (motion_car_id != car_id)
-            {
-                return false;
-            }
-            sol::object seated_field = motion["seated"];
-            if (!seated_field.is<float>())
-            {
-                return false;
-            }
-            out_seated = std::clamp(seated_field.as<float>(), 0.0f, 1.0f);
-            return true;
+            return scripting::read_car_driver_motion(car_id, out_seated);
         }
 
         inline bool load()

@@ -338,7 +338,11 @@ def fetch_dependencies():
 
 def engine_sources():
     source = ROOT / "source"
-    excluded_dirs = [source / "runtime", source / "rhi" / "d3d12", source / "rhi" / "vulkan", source / "rhi" / "metal"]
+    excluded_dirs = [
+        source / "runtime",
+        source / "rhi" / "d3d12", source / "rhi" / "vulkan", source / "rhi" / "metal",
+        source / "unity_build" / "d3d12", source / "unity_build" / "vulkan", source / "unity_build" / "metal",
+    ]
     sources = []
     for path in sorted(source.rglob("*.cpp")):
         if any(excluded in path.parents for excluded in excluded_dirs):
@@ -350,8 +354,8 @@ def engine_sources():
     for batch in sources:
         if batch.name.endswith(".unity.cpp"):
             for member in re.findall(r'^#include "([^"]+\.cpp)"', batch.read_text(encoding="utf-8"), re.MULTILINE):
-                batched.add(batch.parent / member)
-    sources = [path for path in sources if path not in batched]
+                batched.add((batch.parent / member).resolve())
+    sources = [path for path in sources if path.resolve() not in batched]
     def compile_priority(path):
         rel = path.relative_to(source).as_posix()
         if rel.startswith("scripting/Scripting"):

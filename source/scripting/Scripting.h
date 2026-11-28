@@ -29,4 +29,13 @@ namespace spartan::scripting
 
     // the component as its lua usertype, nil for components lua has no binding for
     sol::object to_lua(sol::state_view state, Component* component);
+
+    // world companion script lifecycle (keeps sol/sol.hpp out of WorldSystems.cpp)
+    void companion_load(const std::string& script_path);
+    void companion_tick(float dt, bool is_playing);
+    void companion_stop();
+    void companion_clear();
+
+    // reads the lua CarDriver table for PlayerBody without pulling sol/sol.hpp into world headers
+    bool read_car_driver_motion(uint64_t car_id, float& out_seated);
 }

@@ -7,6 +7,11 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 
+// skip heavy /O2 codegen for one-time startup Lua registration in development builds
+#if defined(DEVELOPMENT) && defined(_MSC_VER)
+#pragma optimize("", off)
+#endif
+
 //= INCLUDES ===============
 #include <sol/sol.hpp>
 #include <array>
@@ -229,7 +234,7 @@ namespace spartan::scripting::visual
         }
 
         template <typename T>
-        void capture_parameter(std::vector<detail::ParameterCapture>& out)
+        void capture_parameter(detail::ParameterCapture* out, size_t& count)
         {
             using U = std::remove_cv_t<std::remove_reference_t<T>>;
             if constexpr (is_injected<U>)
@@ -238,35 +243,50 @@ namespace spartan::scripting::visual
             }
             else if constexpr (std::is_same_v<U, sol::variadic_args>)
             {
-                detail::ParameterCapture parameter;
-                parameter.type.primitive = "any";
-                parameter.variadic       = true;
-                parameter.optional       = true;
-                out.push_back(parameter);
+                detail::ParameterCapture& parameter = out[count++];
+                parameter.type.primitive            = "any";
+                parameter.variadic                  = true;
+                parameter.optional                  = true;
             }
             else if constexpr (is_instance<U, sol::optional>::value || is_instance<U, std::optional>::value)
             {
-                detail::ParameterCapture parameter;
-                parameter.type     = capture_type<typename U::value_type>();
-                parameter.optional = true;
-                out.push_back(parameter);
+                detail::ParameterCapture& parameter = out[count++];
+                parameter.type                      = capture_type<typename U::value_type>();
+                parameter.optional                  = true;
             }
             else
             {
-                detail::ParameterCapture parameter;
-                parameter.type = capture_type<U>();
-                out.push_back(parameter);
+                detail::ParameterCapture& parameter = out[count++];
+                parameter.type                      = capture_type<U>();
             }
         }
 
-        template <typename Tuple, size_t... I>
-        void capture_parameters(std::vector<detail::ParameterCapture>& out, std::index_sequence<I...>)
+        template <typename Tuple, size_t Offset, size_t... I>
+        void capture_parameters_from(detail::ParameterCapture* out, size_t& count, std::index_sequence<I...>)
         {
-            (capture_parameter<std::tuple_element_t<I, Tuple>>(out), ...);
+            (capture_parameter<std::tuple_element_t<I + Offset, Tuple>>(out, count), ...);
+        }
+
+        template <typename Tuple>
+        constexpr size_t return_capacity()
+        {
+            using U = std::remove_cv_t<std::remove_reference_t<Tuple>>;
+            if constexpr (std::is_void_v<U>)
+            {
+                return 0;
+            }
+            else if constexpr (is_instance<U, std::tuple>::value || is_instance<U, std::pair>::value)
+            {
+                return std::tuple_size_v<U>;
+            }
+            else
+            {
+                return 1;
+            }
         }
 
         template <typename R>
-        void capture_returns(std::vector<detail::ParameterCapture>& out)
+        void capture_returns(detail::ParameterCapture* out, size_t& count)
         {
             using U = std::remove_cv_t<std::remove_reference_t<R>>;
             if constexpr (std::is_void_v<U>)
@@ -275,24 +295,22 @@ namespace spartan::scripting::visual
             }
             else if constexpr (is_instance<U, std::tuple>::value || is_instance<U, std::pair>::value)
             {
-                capture_parameters<U>(out, std::make_index_sequence<std::tuple_size_v<U>>{});
-                for (detail::ParameterCapture& value : out)
+                capture_parameters_from<U, 0>(out, count, std::make_index_sequence<std::tuple_size_v<U>>{});
+                for (size_t i = 0; i < count; i++)
                 {
-                    value.optional = false;
+                    out[i].optional = false;
                 }
             }
             else if constexpr (is_instance<U, sol::optional>::value || is_instance<U, std::optional>::value)
             {
-                detail::ParameterCapture value;
-                value.type          = capture_type<typename U::value_type>();
-                value.type.nullable = true;
-                out.push_back(value);
+                detail::ParameterCapture& value = out[count++];
+                value.type                      = capture_type<typename U::value_type>();
+                value.type.nullable             = true;
             }
             else
             {
-                detail::ParameterCapture value;
-                value.type = capture_type<U>();
-                out.push_back(value);
+                detail::ParameterCapture& value = out[count++];
+                value.type                      = capture_type<U>();
             }
         }
 
@@ -311,76 +329,69 @@ namespace spartan::scripting::visual
             }
         }
 
-        template <typename Tuple, size_t Offset, size_t... I>
-        void capture_parameters_from(std::vector<detail::ParameterCapture>& out, std::index_sequence<I...>)
-        {
-            (capture_parameter<std::tuple_element_t<I + Offset, Tuple>>(out), ...);
-        }
-
         // Owner is the usertype (void for tables and globals)
         template <typename Owner, typename F>
-        void record_callable(const std::string& owner, const std::string& name, ApiKind static_kind = ApiKind::Function)
+        void record_callable(const char* owner, const char* name, ApiKind static_kind = ApiKind::Function)
         {
             using traits = callable_traits<F>;
-            detail::FunctionCapture function;
-            function.owner = owner;
-            function.name  = name;
 
             if constexpr (!traits::known)
             {
                 // generic lambdas and functors with overloaded call operators carry no single signature
-                function.kind      = std::is_void_v<Owner> ? static_kind : ApiKind::Method;
-                function.reflected = false;
-                detail::ParameterCapture any;
-                any.type.primitive = "any";
-                any.variadic       = true;
-                any.optional       = true;
-                function.parameters.push_back(any);
-                function.returns.push_back(any);
+                detail::add_unreflected_raw(owner, name, std::is_void_v<Owner> ? static_kind : ApiKind::Method);
             }
             else
             {
                 using arguments = typename traits::arguments;
-                capture_returns<typename traits::result>(function.returns);
+                constexpr size_t arg_cap = std::tuple_size_v<arguments> > 0 ? std::tuple_size_v<arguments> : 1;
+                constexpr size_t ret_cap = return_capacity<typename traits::result>() > 0 ? return_capacity<typename traits::result>() : 1;
 
+                detail::ParameterCapture params[arg_cap];
+                detail::ParameterCapture rets[ret_cap];
+                size_t param_count = 0;
+                size_t ret_count   = 0;
+
+                capture_returns<typename traits::result>(rets, ret_count);
+
+                ApiKind kind = static_kind;
                 if constexpr (traits::member)
                 {
-                    function.kind = ApiKind::Method;
-                    capture_parameters<arguments>(function.parameters, std::make_index_sequence<std::tuple_size_v<arguments>>{});
+                    kind = ApiKind::Method;
+                    capture_parameters_from<arguments, 0>(params, param_count, std::make_index_sequence<std::tuple_size_v<arguments>>{});
                 }
                 else if constexpr (first_argument_is_owner<Owner, arguments>())
                 {
-                    function.kind = ApiKind::Method;
-                    capture_parameters_from<arguments, 1>(function.parameters, std::make_index_sequence<std::tuple_size_v<arguments> - 1>{});
+                    kind = ApiKind::Method;
+                    capture_parameters_from<arguments, 1>(params, param_count, std::make_index_sequence<std::tuple_size_v<arguments> - 1>{});
                 }
                 else
                 {
-                    function.kind = static_kind;
-                    capture_parameters<arguments>(function.parameters, std::make_index_sequence<std::tuple_size_v<arguments>>{});
+                    capture_parameters_from<arguments, 0>(params, param_count, std::make_index_sequence<std::tuple_size_v<arguments>>{});
                 }
-            }
 
-            detail::add_function(std::move(function));
+                detail::add_function_raw(owner, name, kind, nullptr, params, param_count, rets, ret_count, true);
+            }
         }
 
         template <typename Owner, typename... A>
-        void record_constructor_types(const std::string& owner, sol::types<A...>);
+        void record_constructor_types(const char* owner, sol::types<A...>);
 
         // a constructor signature from sol::constructors, Vector3(float, float, float)
         template <typename Owner, typename Signature>
-        void record_constructor(const std::string& owner)
+        void record_constructor(const char* owner)
         {
             if constexpr (std::is_function_v<Signature>)
             {
                 using traits    = function_traits<Signature>;
                 using arguments = typename traits::arguments;
-                detail::FunctionCapture function;
-                function.owner = owner;
-                function.name  = owner;
-                function.kind  = ApiKind::Constructor;
-                capture_parameters<arguments>(function.parameters, std::make_index_sequence<std::tuple_size_v<arguments>>{});
-                capture_returns<Owner>(function.returns);
-                detail::add_function(std::move(function));
+                constexpr size_t arg_cap = std::tuple_size_v<arguments> > 0 ? std::tuple_size_v<arguments> : 1;
+                detail::ParameterCapture params[arg_cap];
+                detail::ParameterCapture rets[1];
+                size_t param_count = 0;
+                size_t ret_count   = 0;
+                capture_parameters_from<arguments, 0>(params, param_count, std::make_index_sequence<std::tuple_size_v<arguments>>{});
+                capture_returns<Owner>(rets, ret_count);
+                detail::add_function_raw(owner, owner, ApiKind::Constructor, nullptr, params, param_count, rets, ret_count, true);
             }
             else if constexpr (is_instance<Signature, sol::types>::value)
             {
@@ -389,13 +400,13 @@ namespace spartan::scripting::visual
         }
 
         template <typename Owner, typename... A>
-        void record_constructor_types(const std::string& owner, sol::types<A...>)
+        void record_constructor_types(const char* owner, sol::types<A...>)
         {
             record_constructor<Owner, Owner(A...)>(owner);
         }
 
         template <typename Owner, typename... Signatures>
-        void record_constructors(const std::string& owner, const sol::constructor_list<Signatures...>&)
+        void record_constructors(const char* owner, const sol::constructor_list<Signatures...>&)
         {
             (record_constructor<Owner, Signatures>(owner), ...);
         }
@@ -420,31 +431,32 @@ namespace spartan::scripting::visual
         }
 
         template <typename Owner, typename F>
-        void record_operator(const std::string& owner, const char* symbol)
+        void record_operator(const char* owner, const char* symbol)
         {
             using traits = callable_traits<F>;
             if constexpr (traits::known)
             {
                 using arguments = typename traits::arguments;
-                detail::FunctionCapture function;
-                function.owner = owner;
-                function.name  = symbol;
-                function.kind  = ApiKind::Operator;
-                function.op    = symbol;
-                capture_parameters<arguments>(function.parameters, std::make_index_sequence<std::tuple_size_v<arguments>>{});
-                capture_returns<typename traits::result>(function.returns);
-                detail::add_function(std::move(function));
+                constexpr size_t arg_cap = std::tuple_size_v<arguments> > 0 ? std::tuple_size_v<arguments> : 1;
+                constexpr size_t ret_cap = return_capacity<typename traits::result>() > 0 ? return_capacity<typename traits::result>() : 1;
+                detail::ParameterCapture params[arg_cap];
+                detail::ParameterCapture rets[ret_cap];
+                size_t param_count = 0;
+                size_t ret_count   = 0;
+                capture_parameters_from<arguments, 0>(params, param_count, std::make_index_sequence<std::tuple_size_v<arguments>>{});
+                capture_returns<typename traits::result>(rets, ret_count);
+                detail::add_function_raw(owner, symbol, ApiKind::Operator, symbol, params, param_count, rets, ret_count, true);
             }
         }
 
         template <typename Owner, typename... F>
-        void record_operator_overloads(const std::string& owner, const char* symbol, const sol::overload_set<F...>&)
+        void record_operator_overloads(const char* owner, const char* symbol, const sol::overload_set<F...>&)
         {
             (record_operator<Owner, F>(owner, symbol), ...);
         }
 
         template <typename Owner, typename V>
-        void record_meta(const std::string& owner, sol::meta_function key, const V& value)
+        void record_meta(const char* owner, sol::meta_function key, const V& value)
         {
             const char* symbol = operator_symbol(key);
             if (!symbol)
@@ -464,48 +476,30 @@ namespace spartan::scripting::visual
         }
 
         template <typename Owner, typename... F>
-        void record_overloads(const std::string& owner, const std::string& name, const sol::overload_set<F...>&)
+        void record_overloads(const char* owner, const char* name, const sol::overload_set<F...>&)
         {
             (record_callable<Owner, F>(owner, name), ...);
         }
 
         template <typename Owner, typename... F>
-        void record_factories(const std::string& owner, const std::string& name, const sol::factory_wrapper<F...>&)
+        void record_factories(const char* owner, const char* name, const sol::factory_wrapper<F...>&)
         {
             (record_callable<void, F>(owner, name, ApiKind::Function), ...);
         }
 
         // one name = value pair of a usertype or table
         template <typename Owner, typename V>
-        void record_named(const std::string& owner, const std::string& name, const V& value)
+        void record_named(const char* owner, const char* name, const V& value)
         {
             using U = std::decay_t<V>;
             if constexpr (std::is_member_object_pointer_v<U>)
             {
                 using Field = std::remove_cv_t<std::remove_reference_t<decltype(std::declval<Owner&>().*value)>>;
-
-                detail::FunctionCapture get;
-                get.owner = owner;
-                get.name  = name;
-                get.kind  = ApiKind::PropertyGet;
-                capture_returns<Field>(get.returns);
-                detail::add_function(std::move(get));
-
-                detail::FunctionCapture set;
-                set.owner = owner;
-                set.name  = name;
-                set.kind  = ApiKind::PropertySet;
-                capture_parameter<Field>(set.parameters);
-                detail::add_function(std::move(set));
+                detail::add_property_raw(owner, name, capture_type<Field>());
             }
             else if constexpr (is_instance<U, sol::var_wrapper>::value)
             {
-                detail::FunctionCapture constant;
-                constant.owner = owner;
-                constant.name  = name;
-                constant.kind  = ApiKind::Constant;
-                capture_returns<decltype(value.value())>(constant.returns);
-                detail::add_function(std::move(constant));
+                detail::add_constant_raw(owner, name, capture_type<decltype(value.value())>());
             }
             else if constexpr (is_instance<U, sol::overload_set>::value)
             {
@@ -521,12 +515,7 @@ namespace spartan::scripting::visual
             }
             else if constexpr (std::is_enum_v<U> || std::is_arithmetic_v<U> || is_string_like<U>)
             {
-                detail::FunctionCapture constant;
-                constant.owner = owner;
-                constant.name  = name;
-                constant.kind  = ApiKind::Constant;
-                capture_returns<U>(constant.returns);
-                detail::add_function(std::move(constant));
+                detail::add_constant_raw(owner, name, capture_type<U>());
             }
             else
             {
@@ -535,18 +524,22 @@ namespace spartan::scripting::visual
         }
 
         template <typename... B>
-        void record_bases(const std::string& owner, const sol::bases<B...>&)
+        void record_bases(const char* owner, const sol::bases<B...>&)
         {
             (detail::add_base(owner, typeid(B)), ...);
         }
 
         template <typename T>
-        void record_bases(const std::string&, const T&)
+        void record_bases(const char*, const T&)
         {
         }
 
+        inline const char* to_c_str(const char* s)            { return s; }
+        inline const char* to_c_str(const std::string& s)     { return s.c_str(); }
+        inline const char* to_c_str(std::string_view s)       { return s.data(); }
+
         template <typename Owner, typename K, typename V>
-        void record_entry(const std::string& owner, const K& key, const V& value)
+        void record_entry(const char* owner, const K& key, const V& value)
         {
             using KU = std::decay_t<K>;
             using VU = std::decay_t<V>;
@@ -571,27 +564,40 @@ namespace spartan::scripting::visual
             }
             else if constexpr (is_string_like<KU> || std::is_same_v<KU, const char*>)
             {
-                record_named<Owner>(owner, std::string(key), value);
+                record_named<Owner>(owner, to_c_str(key), value);
+            }
+        }
+
+        template <typename K>
+        constexpr decltype(auto) decay_key(K&& key)
+        {
+            if constexpr (std::is_array_v<std::remove_reference_t<K>> && std::is_same_v<std::remove_cv_t<std::remove_extent_t<std::remove_reference_t<K>>>, char>)
+            {
+                return static_cast<const char*>(key);
+            }
+            else
+            {
+                return std::forward<K>(key);
             }
         }
 
         template <typename Owner, typename K, typename V>
-        void bind_one_entry(const std::string& owner, sol::usertype<Owner>& ut, K&& key, V&& value)
+        void bind_one_entry(const char* owner, sol::usertype<Owner>& ut, K&& key, V&& value)
         {
             record_entry<Owner>(owner, key, value);
             ut.set(std::forward<K>(key), std::forward<V>(value));
         }
 
         template <typename Owner>
-        void bind_entries(const std::string&, sol::usertype<Owner>&)
+        void bind_entries(const char*, sol::usertype<Owner>&)
         {
         }
 
         template <typename Owner, typename K, typename V, typename... Rest>
             requires (sizeof...(Rest) < 14)
-        void bind_entries(const std::string& owner, sol::usertype<Owner>& ut, K&& key, V&& value, Rest&&... rest)
+        void bind_entries(const char* owner, sol::usertype<Owner>& ut, K&& key, V&& value, Rest&&... rest)
         {
-            bind_one_entry<Owner>(owner, ut, std::forward<K>(key), std::forward<V>(value));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K>(key)), std::forward<V>(value));
             if constexpr (sizeof...(Rest) > 0)
             {
                 bind_entries<Owner>(owner, ut, std::forward<Rest>(rest)...);
@@ -604,19 +610,19 @@ namespace spartan::scripting::visual
             typename K4, typename V4, typename K5, typename V5, typename K6, typename V6, typename K7, typename V7,
             typename... Rest>
         void bind_entries(
-            const std::string& owner, sol::usertype<Owner>& ut,
+            const char* owner, sol::usertype<Owner>& ut,
             K0&& k0, V0&& v0, K1&& k1, V1&& v1, K2&& k2, V2&& v2, K3&& k3, V3&& v3,
             K4&& k4, V4&& v4, K5&& k5, V5&& v5, K6&& k6, V6&& v6, K7&& k7, V7&& v7,
             Rest&&... rest)
         {
-            bind_one_entry<Owner>(owner, ut, std::forward<K0>(k0), std::forward<V0>(v0));
-            bind_one_entry<Owner>(owner, ut, std::forward<K1>(k1), std::forward<V1>(v1));
-            bind_one_entry<Owner>(owner, ut, std::forward<K2>(k2), std::forward<V2>(v2));
-            bind_one_entry<Owner>(owner, ut, std::forward<K3>(k3), std::forward<V3>(v3));
-            bind_one_entry<Owner>(owner, ut, std::forward<K4>(k4), std::forward<V4>(v4));
-            bind_one_entry<Owner>(owner, ut, std::forward<K5>(k5), std::forward<V5>(v5));
-            bind_one_entry<Owner>(owner, ut, std::forward<K6>(k6), std::forward<V6>(v6));
-            bind_one_entry<Owner>(owner, ut, std::forward<K7>(k7), std::forward<V7>(v7));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K0>(k0)), std::forward<V0>(v0));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K1>(k1)), std::forward<V1>(v1));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K2>(k2)), std::forward<V2>(v2));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K3>(k3)), std::forward<V3>(v3));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K4>(k4)), std::forward<V4>(v4));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K5>(k5)), std::forward<V5>(v5));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K6>(k6)), std::forward<V6>(v6));
+            bind_one_entry<Owner>(owner, ut, decay_key(std::forward<K7>(k7)), std::forward<V7>(v7));
             if constexpr (sizeof...(Rest) > 0)
             {
                 bind_entries<Owner>(owner, ut, std::forward<Rest>(rest)...);
@@ -628,16 +634,16 @@ namespace spartan::scripting::visual
     sol::usertype<T> usertype(sol::state_view state, const char* name, Args&&... args)
     {
         static_assert(sizeof...(Args) % 2 == 0, "usertype entries come in name, value pairs");
-        constexpr sol::automagic_flags enrollment_flags = sol::meta::any_same_v<sol::no_construction, sol::meta::unqualified_t<Args>...>
+        constexpr bool has_no_construction = (std::is_same_v<sol::no_construction, sol::meta::unqualified_t<Args>> || ...);
+        constexpr sol::automagic_flags enrollment_flags = has_no_construction
             ? sol::clear_flags(sol::automagic_flags::all, sol::automagic_flags::default_constructor)
             : sol::automagic_flags::all;
         sol::constant_automagic_enrollments<enrollment_flags> enrollments;
-        enrollments.default_constructor = !sol::detail::any_is_constructor_v<Args...>;
-        enrollments.destructor          = !sol::detail::any_is_destructor_v<Args...>;
+        enrollments.default_constructor = !(sol::detail::is_constructor_v<sol::meta::unqualified_t<Args>> || ...);
+        enrollments.destructor          = !(sol::detail::is_destructor<sol::meta::unqualified_t<Args>>::value || ...);
         sol::usertype<T> ut             = state.new_usertype<T>(name, std::move(enrollments));
-        std::string owner_name(name);
-        detail::add_owner(owner_name, true, typeid(T));
-        reflection::bind_entries<T>(owner_name, ut, std::forward<Args>(args)...);
+        detail::add_owner(name, true, typeid(T));
+        reflection::bind_entries<T>(name, ut, std::forward<Args>(args)...);
         return ut;
     }
 
@@ -659,7 +665,7 @@ namespace spartan::scripting::visual
     public:
         table(sol::state_view state, const char* name) : m_name(name), m_table(state.create_named_table(name))
         {
-            detail::add_owner(m_name, false, typeid(void));
+            detail::add_owner(name, false, typeid(void));
         }
 
         class entry
@@ -673,7 +679,7 @@ namespace spartan::scripting::visual
             entry& operator=(V&& value)
             {
                 reflection::record_named<void>(m_owner.m_name, m_key, value);
-                m_owner.m_table[m_key] = std::forward<V>(value);
+                m_owner.m_table.set(m_key, std::forward<V>(value));
                 return *this;
             }
 
@@ -693,7 +699,7 @@ namespace spartan::scripting::visual
         }
 
     private:
-        std::string m_name;
+        const char* m_name;
         sol::table m_table;
     };
 
@@ -717,7 +723,7 @@ namespace spartan::scripting::visual
             entry& operator=(V&& value)
             {
                 reflection::record_named<T>(m_owner.m_name, m_key, value);
-                m_owner.m_type[m_key] = std::forward<V>(value);
+                m_owner.m_type.set(m_key, std::forward<V>(value));
                 return *this;
             }
 
@@ -738,7 +744,7 @@ namespace spartan::scripting::visual
             return type;
         }
 
-        std::string m_name;
+        const char* m_name;
         sol::usertype<T> m_type;
     };
 

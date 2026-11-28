@@ -6,11 +6,10 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "Vulkan_Buffer.cpp"
-#include "RHI_DescriptorSet.cpp"
-#include "RHI_DescriptorSetLayout.cpp"
-#include "Vulkan_DescriptorSet.cpp"
-#include "Vulkan_DescriptorSetLayout.cpp"
-#include "Vulkan_Queue.cpp"
-#include "Vulkan_Sampler.cpp"
-#include "Vulkan_SyncPrimitive.cpp"
+#if defined(DEVELOPMENT) && defined(_MSC_VER)
+#pragma optimize("", off)
+#endif
+#include "../editor/mcp/EditorMcpCommands.cpp"
+#include "../editor/mcp/McpAssetViewerCommands.cpp"
+#include "../editor/mcp/McpGameBuildCommands.cpp"
+#include "../editor/mcp/McpTreeCreatorCommands.cpp"

@@ -6,7 +6,8 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "Event.cpp"
-#include "GameManifest.cpp"
-#include "ProgressTracker.cpp"
-#include "Timer.cpp"
+#include "../world/components/CarReset.cpp"
+#include "../world/components/CarService.cpp"
+#include "../world/components/RaceDriver.cpp"
+#include "../world/components/SpawnPoint.cpp"
+#include "../world/components/SplineFollower.cpp"

@@ -1,0 +1,471 @@
+/*
+Copyright(c) 2015-2026 Panos Karabelas
+Licensed under the Spartan Engine License. See license.md in the repository root.
+https://github.com/PanosK92/SpartanEngine/blob/master/license.md
+Commercial use requires written permission and negotiated payment terms.
+*/
+
+//= INCLUDES ===================
+#include "pch.h"
+#include <sol/sol.hpp>
+#include "ScriptingInternal.h"
+#include "visual/VisualApiReflection.h"
+#include "../car/Car.h"
+#include "../car/CarDirt.h"
+#include "../car/CarPhysics.h"
+#include "../car/CarPresets.h"
+#include "../car/CarSimulation.h"
+#include "../world/Entity.h"
+#include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_stdinc.h>
+#include "../physics/PhysicsWorld.h"
+//==============================
+
+namespace spartan::scripting
+{
+    namespace
+    {
+        // nil means the player's car, otherwise the car whose vehicle or body entity was passed
+        Car* resolve_car(sol::optional<Entity*> entity)
+        {
+            if (!entity || !entity.value())
+            {
+                return Car::GetPlayerCar();
+            }
+            for (Car* car : Car::GetAll())
+            {
+                if (car && (car->GetRootEntity() == entity.value() || car->GetBodyEntity() == entity.value()))
+                {
+                    return car;
+                }
+            }
+            return nullptr;
+        }
+
+        ::car::Simulation* resolve_simulation(sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+            return physics ? CarPhysics::Get(*physics).GetVehicleSimulation() : nullptr;
+        }
+
+        const std::string& garage_directory()
+        {
+            static const std::string directory = []
+            {
+                char* path = SDL_GetPrefPath("Spartan", "Plan");
+                std::string result = path ? path : "";
+                SDL_free(path);
+                return result;
+            }();
+            return directory;
+        }
+
+        std::string garage_path(const ::car::Simulation& simulation)
+        {
+            std::string name = simulation.get_base_spec().name ? simulation.get_base_spec().name : "car";
+            for (char& c : name)
+                if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))) c = '_';
+            return garage_directory().empty() ? std::string() : garage_directory() + "garage_" + name + ".xml";
+        }
+
+        sol::table make_stats(sol::state_view lua, const ::car::Simulation& simulation, const ::car::car_preset& spec)
+        {
+            float power_kw, power_rpm, torque_nm, torque_rpm;
+            simulation.get_peak_output(power_kw, power_rpm, torque_nm, torque_rpm, &spec);
+
+            sol::table stats = lua.create_table();
+            stats["power_kw"]          = power_kw;
+            stats["power_rpm"]         = power_rpm;
+            stats["torque_nm"]         = torque_nm;
+            stats["torque_rpm"]        = torque_rpm;
+            stats["mass_kg"]           = spec.mass;
+            stats["redline_rpm"]       = spec.engine_redline_rpm;
+            stats["displacement_l"]    = spec.engine_displacement_l;
+            stats["cylinders"]         = spec.engine_sound_cylinders;
+            stats["boost_bar"]         = spec.turbo_enabled ? spec.boost_max_pressure : 0.0f;
+            stats["forced_induction"]  = spec.turbo_enabled ? spec.forced_induction : -1;
+            stats["drivetrain"]        = spec.drivetrain_type;
+            stats["diff_type"]         = spec.diff_type;
+            stats["gears"]             = spec.gear_count - 2;
+            stats["final_drive"]       = spec.final_drive;
+            stats["shift_time"]        = spec.shift_time;
+            stats["engine_inertia"]    = spec.engine_inertia;
+            stats["clutch_torque_nm"]  = spec.clutch_max_torque;
+            stats["tire_friction"]     = spec.tire_friction;
+            stats["brake_force"]       = spec.brake_force;
+            stats["brake_bias_front"]  = spec.brake_bias_front;
+            stats["spring_front_hz"]   = spec.front_spring_freq;
+            stats["spring_rear_hz"]    = spec.rear_spring_freq;
+            stats["lift_front"]        = spec.lift_coeff_front;
+            stats["lift_rear"]         = spec.lift_coeff_rear;
+            stats["drag"]              = spec.drag_coeff;
+            stats["yaw_control"]       = spec.yaw_control_enabled;
+            stats["electric"]          = spec.electric_enabled;
+            const auto& condition = simulation.get_condition();
+            stats["oil_quality"] = condition.oil_quality;
+            stats["oil_temperature"] = condition.oil_temperature;
+            stats["chassis_quality"] = condition.chassis_quality;
+            stats["distance_km"] = condition.distance_km;
+            stats["oil_distance_km"] = condition.oil_distance_km;
+            stats["nitrous_kg"] = condition.nitrous_kg;
+            stats["nitrous_active"] = simulation.get_nitrous_delivery() > 0.0f;
+            stats["tire_optimal_temp"] = spec.tire_optimal_temp;
+            stats["tire_wear_rate"] = spec.tire_wear_rate;
+            return stats;
+        }
+    }
+
+    void register_car_tuning(sol::state_view state)
+    {
+        visual::table tuning(state, "CarTuning");
+
+        tuning["GetSaveDirectory"] = []() { return garage_directory(); };
+
+        tuning["GetPlayerCar"] = []() -> Entity*
+        {
+            Car* car = Car::GetPlayerCar();
+            return car ? car->GetRootEntity() : nullptr;
+        };
+
+        tuning["GetName"] = [](sol::optional<Entity*> entity) -> std::string
+        {
+            Car* car = resolve_car(entity);
+            return car ? car->GetDisplayName() : std::string();
+        };
+
+        tuning["IsOccupied"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            return car && car->IsOccupied();
+        };
+
+        // the car a player sits in, nil on foot
+        tuning["GetOccupiedCar"] = []() -> Entity*
+        {
+            for (Car* car : Car::GetAll())
+            {
+                if (car && car->IsOccupied())
+                {
+                    return car->GetRootEntity();
+                }
+            }
+            return nullptr;
+        };
+
+        // the body model entity, what the cabin, its parts and the driver anchors hang off
+        tuning["GetBody"] = [](sol::optional<Entity*> entity) -> Entity*
+        {
+            Car* car = resolve_car(entity);
+            return car ? car->GetBodyEntity() : nullptr;
+        };
+
+        // where the car wants a part of its driver: seat, wheel, hand_left, hand_right, foot_left, foot_right, ... declared in the
+        // .car <driver> element. an entity on the body or on the part it rides, nil when the car does not declare it
+        tuning["GetDriverAnchor"] = [](sol::optional<Entity*> entity, const std::string& name) -> Entity*
+        {
+            Car* car = resolve_car(entity);
+            return car ? car->GetDriverAnchor(name) : nullptr;
+        };
+
+        // chase, hood, interior or wheel, empty without a car
+        tuning["GetView"] = [](sol::optional<Entity*> entity) -> std::string
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return std::string();
+            }
+            switch (car->GetView())
+            {
+                case CarView::Chase:    return "chase";
+                case CarView::Hood:     return "hood";
+                case CarView::Interior: return "interior";
+                case CarView::Wheel:    return "wheel";
+                default:                return std::string();
+            }
+        };
+
+        // getting in and out, for a car script that owns it: e raises a request, the script checks its door, animates the camera and seats the player
+        tuning["SetEntryScripted"] = [](sol::optional<Entity*> entity, bool scripted)
+        {
+            if (Car* car = resolve_car(entity))
+            {
+                car->SetEntryScripted(scripted);
+            }
+        };
+
+        tuning["ConsumeEnterRequest"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            return car && car->ConsumeEnterRequest();
+        };
+
+        tuning["ConsumeExitRequest"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            return car && car->ConsumeExitRequest();
+        };
+
+        tuning["Enter"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->Enter();
+            return car->IsOccupied();
+        };
+
+        // stands the player up outside with their eyes at eye_position, looking along look_direction
+        tuning["ExitTo"] = [](sol::optional<Entity*> entity, const math::Vector3& eye_position, const math::Vector3& look_direction)
+        {
+            Car* car = resolve_car(entity);
+            if (!car || !car->IsOccupied())
+            {
+                return false;
+            }
+            car->ExitTo(eye_position, look_direction);
+            return true;
+        };
+
+        // the camera hangs off the body and goes where the script puts it, the car holds its pedals until the script lets go
+        tuning["SetCameraScripted"] = [](sol::optional<Entity*> entity, bool scripted)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->SetCameraScripted(scripted);
+            return car->IsCameraScripted() == scripted;
+        };
+
+        tuning["IsCameraScripted"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            return car && car->IsCameraScripted();
+        };
+
+        // chase, hood, interior or wheel
+        tuning["SetView"] = [](sol::optional<Entity*> entity, const std::string& view)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            static const std::pair<const char*, CarView> views[] =
+            {
+                { "chase", CarView::Chase }, { "hood", CarView::Hood }, { "interior", CarView::Interior }, { "wheel", CarView::Wheel }
+            };
+            for (const auto& [name, value] : views)
+            {
+                if (view == name)
+                {
+                    car->SetView(value);
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        // a shop holds the car while its menu is open: the pedals, getting out, the reset key and the driver hud are off, the handbrake is on
+        tuning["SetHeld"] = [](sol::optional<Entity*> entity, bool held)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->SetExternallyControlled(held);
+            car->SetCinematic(held);
+            car->SetThrottle(0.0f);
+            car->SetBrake(0.0f);
+            car->SetSteering(0.0f);
+            car->SetHandbrake(held ? 1.0f : 0.0f);
+            return true;
+        };
+
+        // rests the car with its wheels on the given ground point, at rest
+        tuning["PlaceAt"] = [](sol::optional<Entity*> entity, const math::Vector3& ground_position, const math::Quaternion& rotation)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->PlaceAt(ground_position, rotation);
+            return true;
+        };
+
+        // -1 for an unknown part or a car without a simulation
+        tuning["GetStage"] = [](sol::optional<Entity*> entity, const std::string& part)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            return simulation ? simulation->get_upgrade_stage(part) : -1;
+        };
+
+        tuning["GetStageMax"] = [](sol::optional<Entity*> entity, const std::string& part)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            return simulation ? simulation->get_upgrade_stage_max(part) : 0;
+        };
+
+        // rebuilds the vehicle model with the part fitted, stage 0 takes it off
+        tuning["SetStage"] = [](sol::optional<Entity*> entity, const std::string& part, int stage)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            return simulation && simulation->set_upgrade_stage(part, stage);
+        };
+
+        tuning["GetSetting"] = [](sol::optional<Entity*> entity, const std::string& setting)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            return simulation ? simulation->get_upgrade_setting(setting) : 0.0f;
+        };
+
+        tuning["SetSetting"] = [](sol::optional<Entity*> entity, const std::string& setting, float value)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            return simulation && simulation->set_upgrade_setting(setting, value);
+        };
+
+        tuning["GetSettings"] = [](sol::this_state s, sol::optional<Entity*> entity)
+        {
+            sol::state_view lua(s);
+            sol::table result = lua.create_table();
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            if (auto* simulation = resolve_simulation(entity))
+            {
+                int index = 1;
+                for (const auto& setting : simulation->get_upgrade_settings())
+                {
+                    sol::table entry = lua.create_table();
+                    entry["key"] = setting.key;
+                    entry["label"] = setting.label;
+                    entry["part"] = setting.part;
+                    entry["min"] = setting.minimum;
+                    entry["max"] = setting.maximum;
+                    entry["step"] = setting.step;
+                    entry["min_stage"] = setting.min_stage;
+                    result[index++] = entry;
+                }
+            }
+            return result;
+        };
+        tuning["Service"] = [](sol::optional<Entity*> entity, const std::string& service)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            auto* simulation = resolve_simulation(entity);
+            return simulation && simulation->service_vehicle(service);
+        };
+        // dirt is tracked for the driven car only, 0 clean to 1 caked
+        tuning["GetDirt"] = []()
+        {
+            return CarDirt::IsActive() ? CarDirt::GetCoverage() : 0.0f;
+        };
+        tuning["Wash"] = []()
+        {
+            if (!CarDirt::IsActive())
+            {
+                return false;
+            }
+            CarDirt::Wash();
+            return true;
+        };
+
+        // mean wear over the four tyres, 0 new to 1 destroyed, -1 without a car
+        tuning["GetTireWear"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+            if (!physics)
+            {
+                return -1.0f;
+            }
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            const CarPhysics& vehicle = CarPhysics::Get(*physics);
+            float wear = 0.0f;
+            for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+            {
+                wear += vehicle.GetWheelWear(static_cast<WheelIndex>(i));
+            }
+            return wear / static_cast<float>(WheelIndex::Count);
+        };
+        tuning["ReplaceTires"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+            if (!physics)
+            {
+                return false;
+            }
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            CarPhysics::Get(*physics).ResetTireWear();
+            return true;
+        };
+
+        tuning["SetNitrous"] = [](sol::optional<Entity*> entity, bool active)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            if (auto* simulation = resolve_simulation(entity)) simulation->set_nitrous(active);
+        };
+        tuning["Save"] = [](sol::optional<Entity*> entity)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            auto* simulation = resolve_simulation(entity);
+            return simulation && simulation->save_tuning(garage_path(*simulation));
+        };
+        tuning["Load"] = [](sol::optional<Entity*> entity)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            auto* simulation = resolve_simulation(entity);
+            return simulation && simulation->load_tuning(garage_path(*simulation));
+        };
+
+        tuning["ResetAll"] = [](sol::optional<Entity*> entity)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            if (simulation)
+            {
+                simulation->reset_upgrades();
+            }
+            return simulation != nullptr;
+        };
+
+        tuning["GetStats"] = [](sol::this_state s, sol::optional<Entity*> entity) -> sol::object
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            if (!simulation)
+            {
+                return sol::lua_nil;
+            }
+            return make_stats(sol::state_view(s), *simulation, simulation->get_spec());
+        };
+
+        // the stats the car would have with one part at another stage, nothing is fitted
+        tuning["PreviewStats"] = [](sol::this_state s, sol::optional<Entity*> entity, const std::string& part, int stage) -> sol::object
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            ::car::Simulation* simulation = resolve_simulation(entity);
+            if (!simulation)
+            {
+                return sol::lua_nil;
+            }
+            const ::car::car_preset spec = simulation->preview_upgrade_stage(part, stage);
+            return make_stats(sol::state_view(s), *simulation, spec);
+        };
+    }
+}

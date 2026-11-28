@@ -6,8 +6,6 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "Color.cpp"
-#include "IesProfile.cpp"
-#include "Instance.cpp"
-#include "Renderer_Primitives.cpp"
-#include "Renderer_SceneChanges.cpp"
+#include "../rhi/RHI_PhysicalDevice.cpp"
+#include "../rhi/RHI_PipelineState.cpp"
+#include "../rhi/RHI_Sampler.cpp"

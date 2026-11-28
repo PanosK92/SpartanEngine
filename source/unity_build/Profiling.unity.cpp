@@ -6,8 +6,6 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "CarReset.cpp"
-#include "CarService.cpp"
-#include "RaceDriver.cpp"
-#include "SpawnPoint.cpp"
-#include "SplineFollower.cpp"
+#include "../profiling/Profiler.cpp"
+#include "../profiling/RenderDoc.cpp"
+#include "../profiling/TimeBlock.cpp"

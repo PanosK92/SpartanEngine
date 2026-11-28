@@ -26,7 +26,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../car/CarParticleFluid.h"
 #include "../physics/PhysicsCollisionPolicy.h"
 #include "../scripting/Scripting.h"
-#include <sol/sol.hpp>
 #include "BreakableTrees.h"
 #include "../car/CarPhysicsTypes.h"
 #include "components/SplineRoadSurface.h"
@@ -39,65 +38,26 @@ namespace spartan::world_systems
         Config config;
         bool landscape_prepared = false;
 
-        // the table a companion script returns, its optional Start, Tick(dt) and Stop run like a script component's
-        sol::table companion;
-        bool companion_started = false;
-
-        void companion_call(const char* callback, sol::optional<float> dt = sol::nullopt)
-        {
-            if (!companion.valid())
-            {
-                return;
-            }
-            sol::protected_function function = companion[callback];
-            if (!function.valid())
-            {
-                return;
-            }
-            sol::protected_function_result result = dt ? function(companion, *dt) : function(companion);
-            if (!result.valid())
-            {
-                sol::error error = result;
-                SP_LOG_ERROR("world script %s failed: %s", callback, error.what());
-            }
-        }
-
-        void companion_stop()
-        {
-            if (companion_started)
-            {
-                companion_started = false;
-                companion_call("Stop");
-            }
-        }
-
         void companion_clear()
         {
-            companion_stop();
-            companion = sol::lua_nil;
+            scripting::companion_clear();
         }
 
         void companion_tick(float dt)
         {
-            if (!companion.valid() || World::IsLoadingFromFile())
+            if (World::IsLoadingFromFile())
             {
                 return;
             }
-            if (!Engine::IsFlagSet(EngineMode::Playing))
-            {
-                companion_stop();
-                return;
-            }
-            if (!companion_started)
-            {
-                companion_started = true;
-                companion_call("Start");
-            }
-            companion_call("Tick", dt);
+            const bool is_playing = Engine::IsFlagSet(EngineMode::Playing);
+            scripting::companion_tick(dt, is_playing);
             // the camera may have been moved after the world refreshed it this frame
-            if (Camera* camera = World::GetCamera())
+            if (is_playing)
             {
-                camera->RefreshMatrices();
+                if (Camera* camera = World::GetCamera())
+                {
+                    camera->RefreshMatrices();
+                }
             }
         }
 
@@ -131,19 +91,7 @@ namespace spartan::world_systems
                 return;
             World::AddDeferredScriptInit(-1, [script_path]()
             {
-                sol::protected_function_result result = scripting::get_state().safe_script_file(script_path);
-                if (!result.valid())
-                {
-                    sol::error error = result;
-                    SP_LOG_ERROR("world script %s failed: %s", script_path.c_str(), error.what());
-                    return;
-                }
-                sol::object returned = result;
-                if (returned.is<sol::table>())
-                {
-                    companion = returned.as<sol::table>();
-                }
-                SP_LOG_INFO("world script %s configured the world", script_path.c_str());
+                scripting::companion_load(script_path);
             });
         }
     }
@@ -198,7 +146,7 @@ namespace spartan::world_systems
         };
         callbacks.stop_play = [] {
             player_body::Stop();
-            companion_stop();
+            scripting::companion_stop();
             breakable_trees::RestoreAll();
             vegetation_interaction::Clear();
             vehicle_particle_wake::Clear();

@@ -127,9 +127,13 @@ namespace spartan::scripting::visual
             bool reflected = true;
         };
 
-        void add_owner(const std::string& name, bool is_usertype, std::type_index cpp);
-        void add_base(const std::string& owner, std::type_index base);
+        void add_owner(const char* name, bool is_usertype, std::type_index cpp);
+        void add_base(const char* owner, std::type_index base);
         void add_function(FunctionCapture&& function);
+        void add_function_raw(const char* owner, const char* name, ApiKind kind, const char* op, const ParameterCapture* params, size_t param_count, const ParameterCapture* rets, size_t ret_count, bool reflected = true);
+        void add_unreflected_raw(const char* owner, const char* name, ApiKind kind);
+        void add_property_raw(const char* owner, const char* name, TypeCapture field_type);
+        void add_constant_raw(const char* owner, const char* name, TypeCapture value_type);
         void add_enum(sol::state_view state, const char* name, std::type_index cpp, std::vector<std::pair<std::string, int64_t>>&& values);
         void add_enum_value(const std::string& name, const std::string& key, int64_t value);
 

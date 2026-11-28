@@ -13,6 +13,12 @@ Commercial use requires written permission and negotiated payment terms.
 #if defined(API_GRAPHICS_D3D12)
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
+#ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+    #define NOMINMAX
+#endif
 #pragma warning(push, 0) // hide warnings which belong DirectX
 #include <d3d12.h>
 #include <dxgi1_6.h>

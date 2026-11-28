@@ -400,11 +400,12 @@ namespace spartan::scripting::visual
             revision++;
         }
 
-        void add_owner(const string& name, bool is_usertype, type_index cpp)
+        void add_owner(const char* name, bool is_usertype, type_index cpp)
         {
+            const char* safe_name = name ? name : "";
             for (PendingOwner& owner : pending_owners)
             {
-                if (owner.name == name)
+                if (owner.name == safe_name)
                 {
                     owner.is_usertype = owner.is_usertype || is_usertype;
                     return;
@@ -412,14 +413,18 @@ namespace spartan::scripting::visual
             }
 
             PendingOwner owner;
-            owner.name        = name;
+            owner.name        = safe_name;
             owner.is_usertype = is_usertype;
             owner.cpp         = cpp;
-            pending_owners.push_back(owner);
+            pending_owners.push_back(move(owner));
         }
 
-        void add_base(const string& owner_name, type_index base)
+        void add_base(const char* owner_name, type_index base)
         {
+            if (!owner_name)
+            {
+                return;
+            }
             for (PendingOwner& owner : pending_owners)
             {
                 if (owner.name == owner_name)
@@ -433,6 +438,56 @@ namespace spartan::scripting::visual
         void add_function(FunctionCapture&& function)
         {
             pending_functions.push_back(move(function));
+        }
+
+        void add_function_raw(const char* owner, const char* name, ApiKind kind, const char* op, const ParameterCapture* params, size_t param_count, const ParameterCapture* rets, size_t ret_count, bool reflected)
+        {
+            FunctionCapture function;
+            function.owner     = owner ? owner : "";
+            function.name      = name ? name : "";
+            function.kind      = kind;
+            function.op        = op ? op : "";
+            function.reflected = reflected;
+            if (param_count > 0)
+            {
+                function.parameters.assign(params, params + param_count);
+            }
+            if (ret_count > 0)
+            {
+                function.returns.assign(rets, rets + ret_count);
+            }
+            pending_functions.push_back(move(function));
+        }
+
+        void add_unreflected_raw(const char* owner, const char* name, ApiKind kind)
+        {
+            FunctionCapture function;
+            function.owner     = owner ? owner : "";
+            function.name      = name ? name : "";
+            function.kind      = kind;
+            function.reflected = false;
+            ParameterCapture any;
+            any.type.primitive = "any";
+            any.variadic       = true;
+            any.optional       = true;
+            function.parameters.push_back(any);
+            function.returns.push_back(any);
+            pending_functions.push_back(move(function));
+        }
+
+        void add_property_raw(const char* owner, const char* name, TypeCapture field_type)
+        {
+            ParameterCapture value;
+            value.type = field_type;
+            add_function_raw(owner, name, ApiKind::PropertyGet, nullptr, nullptr, 0, &value, 1, true);
+            add_function_raw(owner, name, ApiKind::PropertySet, nullptr, &value, 1, nullptr, 0, true);
+        }
+
+        void add_constant_raw(const char* owner, const char* name, TypeCapture value_type)
+        {
+            ParameterCapture value;
+            value.type = value_type;
+            add_function_raw(owner, name, ApiKind::Constant, nullptr, nullptr, 0, &value, 1, true);
         }
 
         void add_enum(sol::state_view state, const char* name, type_index cpp, vector<pair<string, int64_t>>&& values)

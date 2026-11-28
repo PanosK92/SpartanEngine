@@ -29,6 +29,27 @@ namespace spartan::scripting
     {
         sol::state lua_state;
         SequencerHooks sequencer_hooks;
+        sol::table companion;
+        bool companion_started = false;
+
+        void companion_call(const char* callback, sol::optional<float> dt = sol::nullopt)
+        {
+            if (!companion.valid())
+            {
+                return;
+            }
+            sol::protected_function function = companion[callback];
+            if (!function.valid())
+            {
+                return;
+            }
+            sol::protected_function_result result = dt ? function(companion, *dt) : function(companion);
+            if (!result.valid())
+            {
+                sol::error error = result;
+                SP_LOG_ERROR("world script %s failed: %s", callback, error.what());
+            }
+        }
     }
 
     SequencerHooks& get_sequencer_hooks()
@@ -39,6 +60,7 @@ namespace spartan::scripting
     void initialize()
     {
         visual::detail::reset();
+        companion_clear();
         lua_state.collect_gc();
 
         lua_state.open_libraries(
@@ -255,6 +277,93 @@ namespace spartan::scripting
             }
         }
 
+        return true;
+    }
+
+    void companion_load(const std::string& script_path)
+    {
+        sol::protected_function_result result = sol::state_view(lua_state).safe_script_file(script_path);
+        if (!result.valid())
+        {
+            sol::error error = result;
+            SP_LOG_ERROR("world script %s failed: %s", script_path.c_str(), error.what());
+            return;
+        }
+        sol::object returned = result;
+        if (returned.is<sol::table>())
+        {
+            companion = returned.as<sol::table>();
+        }
+        SP_LOG_INFO("world script %s configured the world", script_path.c_str());
+    }
+
+    void companion_stop()
+    {
+        if (companion_started)
+        {
+            companion_started = false;
+            companion_call("Stop");
+        }
+    }
+
+    void companion_clear()
+    {
+        companion_stop();
+        companion = sol::lua_nil;
+    }
+
+    void companion_tick(float dt, bool is_playing)
+    {
+        if (!companion.valid())
+        {
+            return;
+        }
+        if (!is_playing)
+        {
+            companion_stop();
+            return;
+        }
+        if (!companion_started)
+        {
+            companion_started = true;
+            companion_call("Start");
+        }
+        companion_call("Tick", dt);
+    }
+
+    bool read_car_driver_motion(uint64_t car_id, float& out_seated)
+    {
+        sol::state_view lua(lua_state);
+        if (!lua.lua_state())
+        {
+            return false;
+        }
+        sol::object object = lua["CarDriver"];
+        if (!object.is<sol::table>())
+        {
+            return false;
+        }
+        sol::table motion     = object.as<sol::table>();
+        sol::object car_field = motion["car"];
+        uint64_t motion_car_id = 0;
+        if (car_field.is<std::string>())
+        {
+            motion_car_id = std::strtoull(car_field.as<std::string>().c_str(), nullptr, 10);
+        }
+        else if (car_field.is<uint64_t>())
+        {
+            motion_car_id = car_field.as<uint64_t>();
+        }
+        if (motion_car_id != car_id)
+        {
+            return false;
+        }
+        sol::object seated_field = motion["seated"];
+        if (!seated_field.is<float>())
+        {
+            return false;
+        }
+        out_seated = std::clamp(seated_field.as<float>(), 0.0f, 1.0f);
         return true;
     }
 }

@@ -45,9 +45,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "resource/IResource.h"
 #include "rhi/RHI_Texture.h"
 #include "world/components/Script.h"
-SP_WARNINGS_OFF
-#include <sol/sol.hpp>
-SP_WARNINGS_ON
 #include "world/components/ParticleSystem.h"
 #include "world/components/Water.h"
 #include "world/components/SpawnPoint.h"
@@ -1500,61 +1497,46 @@ void Properties::ShowScript(spartan::Script* script) const
         // the script's globals as ordinary rows, so a script reads like any other component; functions and tables are its code, not its settings
         if (is_loaded)
         {
-            sol::table& script_table = script->GetScriptTable();
+            vector<Script::Property> properties;
             vector<string> code_members;
-            for (auto&& [K, V] : script_table)
+            script->GetProperties(properties, code_members);
+            for (Script::Property& prop : properties)
             {
-                const std::string key = K.as<std::string>();
-                ImGui::PushID(key.c_str());
+                ImGui::PushID(prop.key.c_str());
 
-                if (V.is<bool>())
+                if (prop.type == Script::Property::Type::Bool)
                 {
-                    bool value = V.as<bool>();
-                    if (property_toggle(key.c_str(), &value))
+                    if (property_toggle(prop.key.c_str(), &prop.bool_value))
                     {
-                        script_table[K] = value;
+                        script->SetPropertyBool(prop.key, prop.bool_value);
                     }
                 }
-                else if (V.get_type() == sol::type::number)
+                else if (prop.type == Script::Property::Type::Integer)
                 {
-                    // sol calls every number an int, lua itself knows whether 0.25 is a float
-                    lua_State* state = V.lua_state();
-                    V.push(state);
-                    const bool is_integer = lua_isinteger(state, -1) != 0;
-                    lua_pop(state, 1);
-
-                    layout::begin_property(key.c_str());
-                    if (is_integer)
+                    layout::begin_property(prop.key.c_str());
+                    if (ImGui::DragInt("##value", &prop.int_value))
                     {
-                        int value = V.as<int>();
-                        if (ImGui::DragInt("##value", &value))
-                        {
-                            script_table[K] = value;
-                        }
-                    }
-                    else
-                    {
-                        double value = V.as<double>();
-                        if (ImGui::DragScalar("##value", ImGuiDataType_Double, &value, 0.01f, nullptr, nullptr, "%.6g"))
-                        {
-                            script_table[K] = value;
-                        }
+                        script->SetPropertyInt(prop.key, prop.int_value);
                     }
                     ImGui::EditorUi::decorate_field();
                 }
-                else if (V.is<std::string>())
+                else if (prop.type == Script::Property::Type::Number)
                 {
-                    std::string value = V.as<std::string>();
-                    layout::begin_property(key.c_str());
-                    if (ImGui::InputText("##value", &value))
+                    layout::begin_property(prop.key.c_str());
+                    if (ImGui::DragScalar("##value", ImGuiDataType_Double, &prop.double_value, 0.01f, nullptr, nullptr, "%.6g"))
                     {
-                        script_table[K] = value;
+                        script->SetPropertyDouble(prop.key, prop.double_value);
                     }
                     ImGui::EditorUi::decorate_field();
                 }
-                else
+                else if (prop.type == Script::Property::Type::String)
                 {
-                    code_members.push_back(key);
+                    layout::begin_property(prop.key.c_str());
+                    if (ImGui::InputText("##value", &prop.string_value))
+                    {
+                        script->SetPropertyString(prop.key, prop.string_value);
+                    }
+                    ImGui::EditorUi::decorate_field();
                 }
 
                 ImGui::PopID();

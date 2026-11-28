@@ -6,7 +6,6 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "D3D12_Buffer.cpp"
-#include "D3D12_Queue.cpp"
-#include "D3D12_Sampler.cpp"
-#include "D3D12_SyncPrimitive.cpp"
+#include "../error_handling/Breadcrumbs.cpp"
+#include "../error_handling/CrashHandler.cpp"
+#include "../error_handling/ErrorHandler.cpp"

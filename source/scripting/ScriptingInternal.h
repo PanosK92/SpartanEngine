@@ -12,9 +12,12 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan::scripting
 {
     void register_math(sol::state_view state);
+    void register_math_rotation(sol::state_view state);
     void register_entity(sol::state_view state);
     void register_components(sol::state_view state);
+    void register_components_world(sol::state_view state);
     void register_components_rendering(sol::state_view state);
+    void register_components_effects(sol::state_view state);
     void register_components_physics(sol::state_view state);
     void register_world_helpers(sol::state_view state);
     void register_world(sol::state_view state);

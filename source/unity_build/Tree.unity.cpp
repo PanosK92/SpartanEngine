@@ -6,6 +6,6 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "Animation.cpp"
-#include "AnimationEvaluate.cpp"
-#include "AnimationIk.cpp"
+#include "../geometry/TreeGenerator.cpp"
+#include "../geometry/TreeSpecies.cpp"
+#include "../geometry/TreeTextures.cpp"

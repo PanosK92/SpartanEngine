@@ -214,7 +214,8 @@ function solution_configuration()
             symbols "On"
 
         filter { "configurations:development", "system:windows" }
-            -- Use MSVC's default /Zi so type records go into the intermediate PDB once.
+            -- /Z7 avoids mspdbsrv.exe lock contention across /MP workers while keeping full debug info
+            debugformat "c7"
             buildoptions { "/Zo", "/Oy-" }
             linkoptions { "/DEBUG:FULL", "/IGNORE:4099" }
 
@@ -288,11 +289,11 @@ function spartan_project_configuration()
         removefiles { SOURCE_DIR .. "/runtime/**" }
         -- Small, related implementations share a compiler invocation. The batch
         -- itself lists its members so every generator compiles each file once.
-        for _, batch in ipairs(os.matchfiles(SOURCE_DIR .. "/**.unity.cpp")) do
+        for _, batch in ipairs(os.matchfiles(SOURCE_DIR .. "/unity_build/**.unity.cpp")) do
             for line in io.lines(batch) do
                 local member = line:match('^#include "([^"]+%.cpp)"')
                 if member then
-                    filter { "files:" .. path.join(path.getdirectory(batch), member) }
+                    filter { "files:" .. path.normalize(path.join(path.getdirectory(batch), member)) }
                         excludefrombuild "On"
                 end
             end
@@ -338,13 +339,13 @@ function spartan_project_configuration()
         filter {}
 
         if ARG_API_GRAPHICS == "d3d12" then
-            removefiles { SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**", SOURCE_DIR .. "/rhi/webgpu/**" }
+            removefiles { SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**", SOURCE_DIR .. "/rhi/webgpu/**", SOURCE_DIR .. "/unity_build/vulkan/**", SOURCE_DIR .. "/unity_build/metal/**", SOURCE_DIR .. "/unity_build/webgpu/**" }
         elseif ARG_API_GRAPHICS == "vulkan" then
-            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/metal/**", SOURCE_DIR .. "/rhi/webgpu/**" }
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/metal/**", SOURCE_DIR .. "/rhi/webgpu/**", SOURCE_DIR .. "/unity_build/d3d12/**", SOURCE_DIR .. "/unity_build/metal/**", SOURCE_DIR .. "/unity_build/webgpu/**" }
         elseif ARG_API_GRAPHICS == "metal" then
-            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/webgpu/**" }
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/webgpu/**", SOURCE_DIR .. "/unity_build/d3d12/**", SOURCE_DIR .. "/unity_build/vulkan/**", SOURCE_DIR .. "/unity_build/webgpu/**" }
         elseif ARG_API_GRAPHICS == "webgpu" then
-            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**" }
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**", SOURCE_DIR .. "/unity_build/d3d12/**", SOURCE_DIR .. "/unity_build/vulkan/**", SOURCE_DIR .. "/unity_build/metal/**" }
         end
 
         pchheader "pch.h"
@@ -370,6 +371,14 @@ function spartan_project_configuration()
 
         filter { "files:**/lzma_sdk/**.cpp", "system:linux" }
             buildoptions { "-w" }
+
+        -- keep whole-program LTCG for hot engine runtime code; compile cold editor/mcp/scripting/testing/import/setup/io/ui/archive units
+        -- at full /O2 across all /MP threads instead of serializing through link.exe's 8-thread LTCG pass
+        filter { "configurations:release", "system:windows", "files:**/source/editor/**.cpp or **/source/mcp/**.cpp or **/source/scripting/**.cpp or **/source/testing/**.cpp or **/source/commands/**.cpp or **/source/error_handling/**.cpp or **/source/resource/import/**.cpp or **/source/resource/animation/**.cpp or **/source/geometry/Mesh.cpp or **/source/car/CarVisualization.cpp or **/source/world/WorldHelpers.cpp or **/source/world/WorldPreparation.cpp or **/source/world/Prefab.cpp or **/source/rendering/Renderer_Resources.cpp or **/source/rendering/Renderer_ConsoleVariables.cpp or **/source/ui/**.cpp or **/source/profiling/**.cpp or **/source/steam/**.cpp or **/source/network/**.cpp or **/source/file_system/**.cpp or **/source/display/**.cpp or **/source/unity_build/Editor*.unity.cpp or **/source/unity_build/AssetViewer.unity.cpp or **/source/unity_build/Sequencer.unity.cpp or **/source/unity_build/McpCore.unity.cpp or **/source/unity_build/ScriptingCore.unity.cpp or **/source/unity_build/VisualScripting.unity.cpp or **/source/unity_build/Commands.unity.cpp or **/source/unity_build/ErrorHandling.unity.cpp or **/source/unity_build/Importers.unity.cpp or **/source/unity_build/AnimationIO.unity.cpp or **/source/unity_build/Tree.unity.cpp or **/source/unity_build/GeometryCore.unity.cpp or **/source/unity_build/CarSetup.unity.cpp or **/source/unity_build/WorldResources.unity.cpp or **/source/unity_build/ComponentsTerrain.unity.cpp or **/source/unity_build/d3d12/D3D12_Core.unity.cpp or **/source/unity_build/RHI_Assets.unity.cpp or **/source/unity_build/Ui.unity.cpp or **/source/unity_build/Profiling.unity.cpp" }
+            buildoptions { "/GL-", "/wd4652" }
+
+        filter { "configurations:release", "system:windows", "files:**/lzma_sdk/**.cpp or **.c" }
+            buildoptions { "/GL-" }
 
         filter {}
 
@@ -516,9 +525,9 @@ if generation_actions[_ACTION] then
             local p = relpath:gsub("\\", "/")
             if p:find("/pch%.cpp$") then return 0 end
             if p:find("/scripting/Scripting") then return 1 end
-            if p:find("/rendering/Renderer%.cpp$") or p:find("/mcp/McpCommands") or p:find("/editor/mcp/McpAssistant") then return 2 end
-            if p:find("/world/") or p:find("/editor/widgets/Properties") or p:find("/editor/imgui/source/imgui") then return 3 end
-            if p:find("/car/") or p:find("/physics/") or p:find("/rendering/") or p:find("/rhi/") or p:find("/editor/") then return 4 end
+            if p:find("%.unity%.cpp$") or p:find("/rendering/Renderer%.cpp$") or p:find("/mcp/McpCommands") or p:find("/editor/mcp/McpAssistant") or p:find("/editor/widgets/Properties") then return 2 end
+            if p:find("/world/") or p:find("/car/") or p:find("/editor/imgui/source/imgui") then return 3 end
+            if p:find("/physics/") or p:find("/rendering/") or p:find("/rhi/") or p:find("/editor/") then return 4 end
             return 5
         end
         premake.override(premake.vstudio.vc2010, "emitFiles", function(base, prj, group, tag, fileFunc, fileCfgFunc, checkFunc)

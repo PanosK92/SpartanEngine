@@ -4746,7 +4746,11 @@ namespace spartan
     void Renderer::UpdateMaterials()
     {
         SP_PROFILE_CPU();
-        static array<Sb_Material, rhi_max_array_size> properties;
+        static vector<Sb_Material> properties;
+        if (properties.empty())
+        {
+            properties.resize(rhi_max_array_size);
+        }
         static uint32_t previous_count = 0;
         static bool capacity_warning_logged = false;
         uint32_t count = 0;

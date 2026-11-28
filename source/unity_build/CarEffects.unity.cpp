@@ -6,7 +6,6 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "Input.cpp"
-#include "InputGamepad.cpp"
-#include "InputKeyboard.cpp"
-#include "InputMouse.cpp"
+#include "../car/CarDirt.cpp"
+#include "../car/CarEngineSoundSynthesis.cpp"
+#include "../car/CarSurfaceEffects.cpp"

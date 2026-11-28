@@ -7,6 +7,11 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 
+// skip heavy /O2 codegen for MCP JSON RPC handlers in development builds
+#if defined(DEVELOPMENT) && defined(_MSC_VER)
+#pragma optimize("", off)
+#endif
+
 //= INCLUDES =========================
 #include "McpCommands.h"
 #include "../world/components/Spline.h"

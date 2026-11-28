@@ -134,10 +134,9 @@ namespace spartan
             return result;
         }
 
-        template<typename Builder>
-        void draw(Entity* root, const std::string& name, const std::string& geometry,
+        void draw_impl(Entity* root, const std::string& name, const std::string& geometry,
             const Vector3& position, const Quaternion& rotation, const Vector3& scale,
-            const std::shared_ptr<Material>& surface, Builder&& build)
+            const std::shared_ptr<Material>& surface, std::shared_ptr<Mesh>(*build)(const void*), const void* build_ctx)
         {
             Part& part = parts[name];
             part.used = true;
@@ -158,7 +157,7 @@ namespace spartan
             if (part.geometry != geometry)
             {
                 auto& mesh = meshes[geometry];
-                if (!mesh) mesh = build();
+                if (!mesh) mesh = build(build_ctx);
                 entity->GetComponent<Render>()->SetOwnedMesh(mesh);
                 part.geometry = geometry;
             }
@@ -167,6 +166,16 @@ namespace spartan
             entity->SetPositionAndRotation(position, rotation);
             entity->SetScale(scale);
             entity->SetActive(true);
+        }
+
+        template<typename Builder>
+        void draw(Entity* root, const std::string& name, const std::string& geometry,
+            const Vector3& position, const Quaternion& rotation, const Vector3& scale,
+            const std::shared_ptr<Material>& surface, Builder&& build)
+        {
+            draw_impl(root, name, geometry, position, rotation, scale, surface,
+                [](const void* ctx) { return (*static_cast<const std::remove_reference_t<Builder>*>(ctx))(); },
+                &build);
         }
 
         static std::shared_ptr<Mesh> shape_mesh(const physx::PxGeometry& shape)

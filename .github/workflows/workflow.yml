@@ -30,12 +30,14 @@ jobs:
     outputs:
       stamp: ${{ steps.stamp.outputs.stamp }}
       tag: ${{ steps.stamp.outputs.tag }}
+      started_at: ${{ steps.stamp.outputs.started_at }}
     steps:
       - id: stamp
         run: |
           read y m d h n <<< "$(date -u +'%Y %m %d %H %M')"
           echo "stamp=$y$m$d$h$n" >> $GITHUB_OUTPUT
           echo "tag=$y.$m.$d.$h.$n" >> $GITHUB_OUTPUT
+          echo "started_at=$(date -u +%s)" >> $GITHUB_OUTPUT
 
   build:
     name: windows ${{ matrix.api }} release
@@ -462,8 +464,10 @@ jobs:
     needs: [stamp, build, build_webgpu, build_linux, build_macos]
     permissions:
       contents: write
+      actions: read
     env:
       TAG: ${{ needs.stamp.outputs.tag }}
+      STARTED_AT: ${{ needs.stamp.outputs.started_at }}
     steps:
       - uses: actions/checkout@v4
 
@@ -600,6 +604,32 @@ jobs:
               ? ` · ${commit_count} ${commit_count === 1 ? 'commit' : 'commits'} since <a href="${repo_url}/releases/tag/${previous_tag}">${previous_tag}</a>`
               : '';
 
+            let started_ms = Number(process.env.STARTED_AT) * 1000;
+            try {
+              const { data: run } = await github.rest.actions.getWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: context.runId
+              });
+              if (run && run.run_started_at) {
+                started_ms = Date.parse(run.run_started_at);
+              }
+            } catch (_) {}
+            const elapsed_seconds = Number.isFinite(started_ms) ? Math.max(1, Math.round((Date.now() - started_ms) / 1000)) : 0;
+            const format_duration = (s) => {
+              const h = Math.floor(s / 3600);
+              const m = Math.floor((s % 3600) / 60);
+              const sec = s % 60;
+              if (h > 0) return `${h}h ${m}m ${sec}s`;
+              if (m > 0) return `${m}m ${sec}s`;
+              return `${sec}s`;
+            };
+            const duration_text = elapsed_seconds > 0 ? format_duration(elapsed_seconds) : '';
+            const built_in = duration_text ? ` · built in ${duration_text}` : '';
+            if (duration_text && process.env.GITHUB_STEP_SUMMARY) {
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Workflow completed in **${duration_text}**\n\nRelease: [Spartan v${tag}](${repo_url}/releases/tag/${tag})\n`);
+            }
+
             const changelog = sections.length > 0
               ? sections.join('\n\n')
               : '_No new commits since the last release._';
@@ -609,7 +639,7 @@ jobs:
               `  <img src="${images_url}/logo256.png" width="88" alt="Spartan"/>`,
               '</p>',
               '<p align="center">',
-              `  Automated editor build of <a href="${repo_url}/commit/${context.sha}"><code>${short_sha}</code></a> · ${Number(day)} ${month_name} ${year}, ${hour}:${minute} UTC${since}`,
+              `  Automated editor build of <a href="${repo_url}/commit/${context.sha}"><code>${short_sha}</code></a> · ${Number(day)} ${month_name} ${year}, ${hour}:${minute} UTC${since}${built_in}`,
               '</p>',
               '',
               '## Download',

@@ -140,6 +140,101 @@ sol::table& Script::GetScriptTable()
     return m_instance->table;
 }
 
+void Script::GetProperties(std::vector<Property>& out_properties, std::vector<std::string>& out_code_members) const
+{
+    out_properties.clear();
+    out_code_members.clear();
+    if (!IsScriptLoaded())
+    {
+        return;
+    }
+
+    const sol::table& script_table = m_instance->table;
+    for (auto&& [K, V] : script_table)
+    {
+        if (!K.is<std::string>())
+        {
+            continue;
+        }
+        const std::string key = K.as<std::string>();
+
+        if (V.is<bool>())
+        {
+            Property prop;
+            prop.key        = key;
+            prop.type       = Property::Type::Bool;
+            prop.bool_value = V.as<bool>();
+            out_properties.push_back(std::move(prop));
+        }
+        else if (V.get_type() == sol::type::number)
+        {
+            // sol calls every number an int, lua itself knows whether 0.25 is a float
+            lua_State* state = V.lua_state();
+            V.push(state);
+            const bool is_integer = lua_isinteger(state, -1) != 0;
+            lua_pop(state, 1);
+
+            Property prop;
+            prop.key = key;
+            if (is_integer)
+            {
+                prop.type      = Property::Type::Integer;
+                prop.int_value = V.as<int>();
+            }
+            else
+            {
+                prop.type         = Property::Type::Number;
+                prop.double_value = V.as<double>();
+            }
+            out_properties.push_back(std::move(prop));
+        }
+        else if (V.is<std::string>())
+        {
+            Property prop;
+            prop.key          = key;
+            prop.type         = Property::Type::String;
+            prop.string_value = V.as<std::string>();
+            out_properties.push_back(std::move(prop));
+        }
+        else
+        {
+            out_code_members.push_back(key);
+        }
+    }
+}
+
+void Script::SetPropertyBool(const std::string& key, bool value)
+{
+    if (IsScriptLoaded())
+    {
+        m_instance->table[key] = value;
+    }
+}
+
+void Script::SetPropertyInt(const std::string& key, int value)
+{
+    if (IsScriptLoaded())
+    {
+        m_instance->table[key] = value;
+    }
+}
+
+void Script::SetPropertyDouble(const std::string& key, double value)
+{
+    if (IsScriptLoaded())
+    {
+        m_instance->table[key] = value;
+    }
+}
+
+void Script::SetPropertyString(const std::string& key, const std::string& value)
+{
+    if (IsScriptLoaded())
+    {
+        m_instance->table[key] = value;
+    }
+}
+
 void Script::LoadScriptFile(std::string_view path)
 {
     if (!FileSystem::Exists(std::string(path)))

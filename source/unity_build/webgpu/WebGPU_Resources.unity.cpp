@@ -6,6 +6,7 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "RHI_PhysicalDevice.cpp"
-#include "RHI_PipelineState.cpp"
-#include "RHI_Sampler.cpp"
+#include "../../rhi/webgpu/WebGPU_Buffer.cpp"
+#include "../../rhi/webgpu/WebGPU_Queue.cpp"
+#include "../../rhi/webgpu/WebGPU_Sampler.cpp"
+#include "../../rhi/webgpu/WebGPU_SyncPrimitive.cpp"

@@ -6,7 +6,6 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "Environment.cpp"
-#include "EnvironmentSerialization.cpp"
-#include "EnvironmentWind.cpp"
-#include "Weather.cpp"
+#include "../resource/animation/AnimationAssetValidation.cpp"
+#include "../resource/animation/AnimationClipIO.cpp"
+#include "../resource/animation/SkeletonIO.cpp"

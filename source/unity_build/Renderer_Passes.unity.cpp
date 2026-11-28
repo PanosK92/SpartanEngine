@@ -6,13 +6,8 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "BoundingBox.cpp"
-#include "Frustum.cpp"
-#include "Matrix.cpp"
-#include "Plane.cpp"
-#include "Quaternion.cpp"
-#include "Ray.cpp"
-#include "Rectangle.cpp"
-#include "Vector2.cpp"
-#include "Vector3.cpp"
-#include "Vector4.cpp"
+#include "../rendering/Renderer_Passes_Editor.cpp"
+#include "../rendering/Renderer_Passes_Geometry.cpp"
+#include "../rendering/Renderer_Passes_Ocean.cpp"
+#include "../rendering/Renderer_Passes_Sky.cpp"
+#include "../rendering/Renderer_Passes_TerrainDeformation.cpp"
