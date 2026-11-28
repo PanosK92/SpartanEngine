@@ -432,13 +432,15 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
         }
         mirror_dir = normalize(mirror_dir);
 
-        float base_offset = 0.002f + distance * 0.0002f;
-        float grazing     = 1.0f - n_dot_v;
-        float pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / max(render_res.x, 1.0f);
-        float2 cone       = float2(distance * pixel_angle, pixel_angle + surface.roughness_alpha);
+        float base_offset   = 0.002f + distance * 0.0002f;
+        float grazing       = 1.0f - n_dot_v;
+        float pixel_angle   = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / max(render_res.x, 1.0f);
+        float2 cone         = float2(distance * pixel_angle, pixel_angle + surface.roughness_alpha);
+        // the blas holds the full detail mesh while this pane may be drawn at a lod, step out past the lod error
+        float normal_offset = max(base_offset, rt_lod_shadow_offset(distance));
 
         RayDesc refl_ray;
-        refl_ray.Origin    = position_world + face_normal * base_offset + mirror_dir * base_offset * grazing * 2.0f;
+        refl_ray.Origin    = position_world + face_normal * normal_offset + mirror_dir * base_offset * grazing * 2.0f;
         refl_ray.Direction = mirror_dir;
         refl_ray.TMin      = 0.001f;
         refl_ray.TMax      = 25.0f;

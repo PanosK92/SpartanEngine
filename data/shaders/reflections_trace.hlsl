@@ -95,11 +95,25 @@ void ray_gen()
     }
 
     // ray origin offset scaled with camera distance, pushed along the reflection at grazing angles
-    float camera_distance = length(get_camera_position() - pos_ws);
+    float3 to_camera      = get_camera_position() - pos_ws;
+    float camera_distance = length(to_camera);
     float base_offset     = 0.001f + camera_distance * 0.0001f;
     float n_dot_v         = saturate(dot(normal_ws, V));
     float grazing_factor  = 1.0f - n_dot_v;
-    float3 ray_origin     = pos_ws + normal_ws * base_offset + R * base_offset * grazing_factor * 2.0f;
+
+    // the blas holds the full detail mesh while the g-buffer drew a lod, the lod error is along the drawn surface
+    // so the offset follows its geometric normal, the visible side faces the camera
+    float3 offset_normal = get_geometric_normal(uv);
+    if (dot(offset_normal, offset_normal) == 0.0f)
+    {
+        offset_normal = normal_ws;
+    }
+    if (dot(offset_normal, to_camera) < 0.0f)
+    {
+        offset_normal = -offset_normal;
+    }
+    float normal_offset = max(base_offset, rt_lod_shadow_offset(camera_distance));
+    float3 ray_origin   = pos_ws + offset_normal * normal_offset + R * base_offset * grazing_factor * 2.0f;
 
     RayDesc ray;
     ray.Origin    = ray_origin;
